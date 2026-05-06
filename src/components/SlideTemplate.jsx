@@ -169,7 +169,7 @@ export default function SlideTemplate({
       {/* ─── Body ─── */}
       <div style={{
         display: 'flex', flex: 1,
-        padding: '6px 28px 0', gap: 20,
+        padding: '4px 28px 0', gap: 18,
         overflow: 'hidden', minHeight: 0,
       }}>
 
@@ -177,7 +177,7 @@ export default function SlideTemplate({
         <div style={{
           flex: 13, minWidth: 0,
           display: 'flex', flexDirection: 'column',
-          gap: 10, paddingBottom: 8,
+          gap: 8, paddingBottom: 6,
         }}>
           {/* Contexte */}
           <div style={{ background: C.grisClair, borderRadius: 8, padding: '8px 14px', flexShrink: 0 }}>
@@ -196,15 +196,17 @@ export default function SlideTemplate({
             ))}
           </div>
 
-          {/* Périmètre */}
+          {/* Périmètre — badge + encadré comme Contexte */}
           <div style={{ flexShrink: 0 }}>
             <Badge>Périmètre</Badge>
-            {per.map((line, i) => (
-              <Bullet key={i} text={line} dotColor={C.orange} textColor={C.bleu} bold />
-            ))}
+            <div style={{ background: C.grisClair, borderRadius: 8, padding: '7px 14px' }}>
+              {per.map((line, i) => (
+                <Bullet key={i} text={line} dotColor={C.orange} textColor={C.bleu} bold />
+              ))}
+            </div>
           </div>
 
-          {/* Enjeux — flex 1 pour remplir */}
+          {/* Enjeux — badge + bullets sans encadré */}
           <div style={{ flex: 1, minHeight: 0 }}>
             <Badge>Les enjeux clés</Badge>
             {enj.map((line, i) => (
@@ -217,7 +219,7 @@ export default function SlideTemplate({
         <div style={{
           flex: 7, minWidth: 0,
           display: 'flex', flexDirection: 'column',
-          gap: 10, paddingBottom: 8,
+          gap: 8, paddingBottom: 6,
         }}>
           {/* Logo client */}
           {logo_url ? (
@@ -239,19 +241,21 @@ export default function SlideTemplate({
             </div>
           )}
 
-          {/* Notre impact — pill très arrondi */}
+          {/* Notre impact — encadré fond gris, bouton pill + bullets */}
           <div style={{ flex: 1, minHeight: 0 }}>
-            <div style={{
-              background: C.orange, color: C.blanc,
-              borderRadius: 30, padding: '9px 14px',
-              fontSize: 15, fontWeight: 400, marginBottom: 10,
-              textAlign: 'center',
-              fontFamily: FONT_TITLE,
-              wordSpacing: 'normal', letterSpacing: 'normal',
-            }}>Notre impact</div>
-            {imp.map((line, i) => (
-              <Bullet key={i} text={line} dotColor={C.bleu} textColor={C.bleu} />
-            ))}
+            <div style={{ background: C.grisClair, borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{
+                background: C.orange, color: C.blanc,
+                borderRadius: 30, padding: '8px 14px',
+                fontSize: 15, fontWeight: 400, marginBottom: 10,
+                textAlign: 'center',
+                fontFamily: FONT_TITLE,
+                wordSpacing: 'normal', letterSpacing: 'normal',
+              }}>Notre impact</div>
+              {imp.map((line, i) => (
+                <Bullet key={i} text={line} dotColor={C.orange} textColor={C.bleu} />
+              ))}
+            </div>
           </div>
 
           {/* Métriques — chiffre ET label en orange */}
