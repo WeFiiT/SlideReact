@@ -78,11 +78,27 @@ function DecorTopLeft() {
   )
 }
 
-function Bullet({ text, dotColor = '#f97316' }) {
+function Badge({ children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
-      <span style={{ color: dotColor, fontWeight: 700, marginTop: 1, flexShrink: 0, lineHeight: 1.4 }}>•</span>
-      <span style={{ fontSize: 12, color: '#334155', lineHeight: 1.4 }}>{text}</span>
+    <div style={{
+      display: 'block',
+      width: 'fit-content',
+      background: '#1a2f5e',
+      color: '#ffffff',
+      borderRadius: 4,
+      padding: '3px 14px',
+      fontSize: 12,
+      fontWeight: 700,
+      marginBottom: 6,
+    }}>{children}</div>
+  )
+}
+
+function Bullet({ text, dotColor = '#f97316', textColor = '#334155', bold = false }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 3 }}>
+      <span style={{ color: dotColor, fontWeight: 700, flexShrink: 0, lineHeight: '18px' }}>•</span>
+      <span style={{ fontSize: 12, color: textColor, lineHeight: 1.45, fontWeight: bold ? 700 : 400 }}>{text}</span>
     </div>
   )
 }
@@ -117,88 +133,134 @@ export default function SlideTemplate({
     { chiffre: metrique_3_chiffre?.trim() || PH.metriques[2].chiffre, label: metrique_3_label?.trim() || PH.metriques[2].label },
   ]
 
-  const badge = (label) => (
-    <div style={{
-      display: 'inline-block',
-      background: '#1a2f5e', color: '#ffffff',
-      borderRadius: 4, padding: '3px 14px',
-      fontSize: 12, fontWeight: 700, marginBottom: 6,
-    }}>{label}</div>
-  )
-
   return (
     <div style={{
-      width: 1280, height: 720,
+      width: 1280,
+      height: 720,
       background: '#ffffff',
       fontFamily: "'Segoe UI', Arial, sans-serif",
-      display: 'flex', flexDirection: 'column',
-      overflow: 'hidden', position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      position: 'relative',
+      textAlign: 'left',
     }}>
       <DecorTopLeft />
       <DecorTopRight />
 
       {/* Header */}
       <div style={{
-        background: '#1a2f5e', padding: '16px 32px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        minHeight: 72, position: 'relative', zIndex: 1,
+        background: '#1a2f5e',
+        padding: '0 32px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: 76,
+        flexShrink: 0,
+        position: 'relative',
+        zIndex: 1,
       }}>
-        <span style={{ color: '#ffffff', fontSize: 26, fontWeight: 700, letterSpacing: 0.5, flex: 1 }}>
+        <span style={{ color: '#ffffff', fontSize: 26, fontWeight: 800, letterSpacing: 0.3, flex: 1 }}>
           {t}
         </span>
-        <span style={{ color: '#f97316', fontWeight: 700, fontSize: 22, marginLeft: 16 }}>point.</span>
+        <span style={{ color: '#f97316', fontWeight: 800, fontSize: 24, marginLeft: 20, flexShrink: 0 }}>point.</span>
       </div>
 
       {/* Sous-titre */}
-      <div style={{ padding: '8px 32px 4px', color: '#2563eb', fontSize: 14, fontWeight: 600 }}>
+      <div style={{
+        padding: '7px 32px 5px',
+        color: '#2563eb',
+        fontSize: 13,
+        fontWeight: 600,
+        flexShrink: 0,
+      }}>
         {st}
       </div>
 
       {/* Body */}
-      <div style={{ display: 'flex', flex: 1, padding: '6px 32px 0', gap: 24, overflow: 'hidden' }}>
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        padding: '4px 28px 0',
+        gap: 20,
+        overflow: 'hidden',
+        minHeight: 0,
+      }}>
 
-        {/* Colonne gauche 65% */}
-        <div style={{ flex: '0 0 65%', display: 'flex', flexDirection: 'column', gap: 8 }}>
-
+        {/* Colonne gauche 65% — space-between pour remplir la hauteur */}
+        <div style={{
+          flex: '0 0 65%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          paddingBottom: 10,
+          minHeight: 0,
+        }}>
           {/* Contexte */}
           <div style={{ background: '#f1f5f9', borderRadius: 8, padding: '8px 14px' }}>
-            {ctx.map((line, i) => <Bullet key={i} text={line} dotColor="#f97316" />)}
+            {ctx.map((line, i) => <Bullet key={i} text={line} />)}
           </div>
 
           {/* Tags */}
           <div style={{ display: 'flex', gap: 6 }}>
             {tgs.map((tag, i) => (
               <span key={i} style={{
-                border: '1px solid #94a3b8', background: '#ffffff',
-                color: '#475569', borderRadius: 4,
-                padding: '3px 14px', fontSize: 12, fontWeight: 500,
+                border: '1px solid #94a3b8',
+                background: '#ffffff',
+                color: '#475569',
+                borderRadius: 4,
+                padding: '3px 14px',
+                fontSize: 12,
+                fontWeight: 500,
               }}>{tag}</span>
             ))}
           </div>
 
           {/* Périmètre */}
           <div>
-            {badge('Périmètre')}
-            {per.map((line, i) => <Bullet key={i} text={line} dotColor="#f97316" />)}
+            <Badge>Périmètre</Badge>
+            {per.map((line, i) => (
+              <Bullet key={i} text={line} textColor="#1a2f5e" bold />
+            ))}
           </div>
 
           {/* Enjeux clés */}
           <div>
-            {badge('Les enjeux clés')}
-            {enj.map((line, i) => <Bullet key={i} text={line} dotColor="#f97316" />)}
+            <Badge>Les enjeux clés</Badge>
+            {enj.map((line, i) => <Bullet key={i} text={line} />)}
           </div>
         </div>
 
-        {/* Colonne droite 35% */}
-        <div style={{ flex: '0 0 35%', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
+        {/* Colonne droite 35% — space-between */}
+        <div style={{
+          flex: '0 0 35%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          paddingBottom: 10,
+          minHeight: 0,
+        }}>
           {/* Logo */}
           {logo_url ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 70, background: '#f8fafc', borderRadius: 8 }}>
-              <img src={logo_url} alt="logo client" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain' }} />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: 72,
+              background: '#f8fafc',
+              borderRadius: 8,
+            }}>
+              <img src={logo_url} alt="logo client" style={{ maxHeight: 58, maxWidth: '100%', objectFit: 'contain' }} />
             </div>
           ) : (
-            <div style={{ height: 70, background: '#f1f5f9', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{
+              height: 72,
+              background: '#f1f5f9',
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
               <span style={{ color: '#94a3b8', fontSize: 12, fontStyle: 'italic', textAlign: 'center', lineHeight: 1.5 }}>
                 Remplacer par<br />logo client
               </span>
@@ -208,20 +270,28 @@ export default function SlideTemplate({
           {/* Notre impact */}
           <div>
             <div style={{
-              background: '#f97316', color: '#ffffff',
-              borderRadius: 6, padding: '7px 14px',
-              fontSize: 13, fontWeight: 700, marginBottom: 8,
+              background: '#f97316',
+              color: '#ffffff',
+              borderRadius: 6,
+              padding: '8px 14px',
+              fontSize: 13,
+              fontWeight: 700,
+              marginBottom: 8,
               textAlign: 'center',
             }}>Notre impact</div>
             {imp.map((line, i) => <Bullet key={i} text={line} dotColor="#2563eb" />)}
           </div>
 
           {/* Métriques */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 2 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {metriques.map((m, i) => (
               <div key={i} style={{
-                background: '#fef3c7', borderRadius: 6, padding: '5px 12px',
-                display: 'flex', alignItems: 'center', gap: 10,
+                background: '#fef3c7',
+                borderRadius: 6,
+                padding: '6px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
               }}>
                 <span style={{ color: '#f97316', fontWeight: 800, fontSize: 18, minWidth: 44 }}>{m.chiffre}</span>
                 <span style={{ color: '#78350f', fontSize: 12 }}>{m.label}</span>
@@ -234,9 +304,13 @@ export default function SlideTemplate({
       {/* Footer */}
       <div style={{
         borderTop: '3px solid #1a2f5e',
-        margin: '8px 32px 0',
-        paddingTop: 4, paddingBottom: 8,
-        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+        margin: '6px 28px 0',
+        paddingTop: 4,
+        paddingBottom: 8,
+        display: 'flex',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        flexShrink: 0,
       }}>
         <span style={{ color: '#1a2f5e', fontWeight: 800, fontSize: 16, letterSpacing: 1 }}>W.</span>
       </div>
