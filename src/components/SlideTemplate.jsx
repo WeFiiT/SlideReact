@@ -1,15 +1,13 @@
-/* Charte WeFiiT — Publica Play = titres, Geomanist = corps */
 const FONT_TITLE = "'Publica Play', Arial, sans-serif"
 const FONT_BODY  = "'Geomanist', Arial, sans-serif"
 
-/* Couleurs officielles WeFiiT */
 const C = {
-  bleu:       '#002882',
-  orange:     '#F98F03',
-  blanc:      '#FFFFFF',
-  grisClair:  '#F8FAFB',
+  bleu:    '#002882',
+  orange:  '#F98F03',
+  blanc:   '#FFFFFF',
+  grisClair: '#F0F4FF',
   grisNeutre: '#E7E6E6',
-  texte:      '#1e293b',
+  texte:   '#334155',
 }
 
 const txt = (overrides = {}) => ({
@@ -23,27 +21,27 @@ const txt = (overrides = {}) => ({
 
 const PH = {
   titre: 'Immersion PM – Enjeu/pbmatique mission.',
-  sous_titre: "Périmètre fonctionnel : PM sur l'app/web, sur périmètre… fonctionnalité X...",
+  sous_titre: "Périmètre fonctionnel : PM sur l'app/web, sur périmètre… fonctionnalité X…",
   contexte: [
     "Description entreprise et organisation : présentation client, CA",
     "Enjeux globaux d'entreprise / contexte marché",
-    "Parties prenantes : Marketing, Business, Comex...",
+    "Parties prenantes : Marketing, Business, Comex…",
   ],
   tags: ["X utilisateurs", "KPI 1", "Secteur", "B2C/B2B"],
   perimetre: [
     "App / Web – Front / Back",
     "Place dans l'organisation : Tribe X au sein de la Direction Y",
-    "Composition de la squad : Squad X, composée de x devs / x QA / x PO...",
+    "Composition de la squad : Squad X, composée de x devs / x QA / x PO…",
   ],
   enjeux: [
-    "Enjeu/OKR de la mission 1 [augmenter les revenus/améliorer la conversion...]",
-    "Enjeu/OKR de la mission 2 [livrer la fonctionnalité/projet X...]",
-    "Enjeu/OKR de la mission 3 [optimiser l'organisation, optimiser le modèle de donnée...]",
+    "Enjeu/OKR de la mission 1 (augmenter les revenus/améliorer la conversion…)",
+    "Enjeu/OKR de la mission 2 (livrer la fonctionnalité/projet X…)",
+    "Enjeu/OKR de la mission 3 (optimiser l'organisation, optimiser le modèle de donnée…)",
   ],
   impact: [
-    "Pourquoi ça fité ? Mise en place de process, alignement de parties prenantes (tech x Produit...)",
-    "Initiatives stratégiques ? Généralisation méthode Discovery pour dérisquer...",
-    "Evolutions d'organisation ? ...",
+    "Pourquoi ça fité ? Mise en place de process, alignement de parties prenantes (tech x Produit…)",
+    "Initiatives stratégiques ? Généralisation méthode Discovery pour dérisquer…",
+    "Evolutions d'organisation ? …",
   ],
   metriques: [
     { chiffre: '+X%', label: 'de conversion' },
@@ -56,37 +54,15 @@ function fill(arr, phs) {
   return phs.map((ph, i) => (arr?.[i]?.trim() ? arr[i] : ph))
 }
 
-/* Motif "fil" WeFiiT — coin bas-droit, W=1280 H=720 */
-function FilMotif() {
-  return (
-    <svg
-      style={{ position: 'absolute', bottom: 0, right: 0, pointerEvents: 'none', zIndex: 0 }}
-      width="680" height="380"
-      viewBox="600 340 680 380"
-      fill="none"
-    >
-      <g opacity="0.22" stroke="#4a6ad0" strokeWidth="5" strokeLinecap="round">
-        <path d="M 1280 720 Q 1180 720 1180 620 Q 1180 520 1080 520 Q 1080 620 980 620 Q 980 720 880 720" />
-        <path d="M 1280 720 Q 1150 720 1150 590 Q 1150 460 1020 460 Q 1020 590 890 590 Q 890 720 760 720" />
-        <path d="M 1280 720 Q 1120 720 1120 560 Q 1120 400 960 400 Q 960 560 800 560 Q 800 720 640 720" />
-      </g>
-    </svg>
-  )
-}
-
-/* Point orange WeFiiT — accent décoratif */
-function OrangeDot({ x, y, r = 6 }) {
-  return <circle cx={x} cy={y} r={r} fill={C.orange} />
-}
 
 function Badge({ children }) {
   return (
     <div style={{
       display: 'inline-block',
       background: C.bleu, color: C.blanc,
-      borderRadius: 4, padding: '3px 14px',
+      borderRadius: 20, padding: '4px 16px',
       fontSize: 13, fontWeight: 400,
-      marginBottom: 6,
+      marginBottom: 7,
       fontFamily: FONT_TITLE,
       textAlign: 'left',
       wordSpacing: 'normal',
@@ -95,17 +71,18 @@ function Badge({ children }) {
   )
 }
 
-function Bullet({ text, dotColor, textColor = C.texte, bold = false }) {
-  const dot = dotColor || C.orange
+function Bullet({ text, dotColor, textColor, bold = false }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 5 }}>
       <span style={{
-        color: dot, fontWeight: 700, flexShrink: 0,
+        color: dotColor || C.orange,
+        fontWeight: 700, flexShrink: 0,
         fontSize: 15, lineHeight: '18px',
         fontFamily: FONT_BODY,
       }}>•</span>
       <span style={txt({
-        fontSize: 13, color: textColor,
+        fontSize: 13,
+        color: textColor || C.texte,
         lineHeight: 1.4,
         fontWeight: bold ? 700 : 400,
       })}>{text}</span>
@@ -154,52 +131,53 @@ export default function SlideTemplate({
       wordSpacing: 'normal',
       letterSpacing: 'normal',
     }}>
-      {/* Motif "fil" WeFiiT — coin bas-droit */}
-      <FilMotif />
 
-      {/* Points orange décoratifs */}
-      <svg style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 0, width: 1280, height: 78, overflow: 'visible' }}>
-        <OrangeDot x={1240} y={39} r={5} />
-        <OrangeDot x={1255} y={39} r={3} />
-      </svg>
-
-      {/* Header */}
+      {/* ─── Header ─── */}
       <div style={{
-        background: C.bleu, padding: '0 32px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        height: 78, flexShrink: 0, position: 'relative', zIndex: 1,
+        height: 74, flexShrink: 0,
+        position: 'relative', overflow: 'hidden',
+        display: 'flex', alignItems: 'center', padding: '0 32px',
+        justifyContent: 'space-between',
       }}>
+        {/* SVG header WeFiiT (fond bleu + motif fil) */}
+        <img
+          src="/logos/header.svg"
+          alt=""
+          style={{ position: 'absolute', top: 0, left: 0, width: 1280, height: 74, objectFit: 'fill', pointerEvents: 'none' }}
+        />
         <span style={{
           color: C.blanc, fontSize: 27, fontWeight: 400,
           flex: 1, fontFamily: FONT_TITLE,
           textAlign: 'left', wordSpacing: 'normal', letterSpacing: 'normal',
+          position: 'relative', zIndex: 1,
         }}>{t}</span>
         <span style={{
           color: C.orange, fontWeight: 400, fontSize: 24,
           marginLeft: 20, flexShrink: 0, fontFamily: FONT_TITLE,
           wordSpacing: 'normal', letterSpacing: 'normal',
+          position: 'relative', zIndex: 1,
         }}>point.</span>
       </div>
 
-      {/* Sous-titre */}
+      {/* ─── Sous-titre ─── */}
       <div style={txt({
         padding: '8px 32px 5px',
         color: C.bleu, fontSize: 14, fontWeight: 400,
         flexShrink: 0, fontFamily: FONT_TITLE,
       })}>{st}</div>
 
-      {/* Body */}
+      {/* ─── Body ─── */}
       <div style={{
         display: 'flex', flex: 1,
         padding: '6px 28px 0', gap: 20,
         overflow: 'hidden', minHeight: 0,
       }}>
 
-        {/* Colonne gauche — 13/20 */}
+        {/* Colonne gauche 13/20 */}
         <div style={{
           flex: 13, minWidth: 0,
           display: 'flex', flexDirection: 'column',
-          gap: 10, paddingBottom: 10,
+          gap: 10, paddingBottom: 8,
         }}>
           {/* Contexte */}
           <div style={{ background: C.grisClair, borderRadius: 8, padding: '8px 14px', flexShrink: 0 }}>
@@ -213,7 +191,7 @@ export default function SlideTemplate({
                 border: `1px solid ${C.grisNeutre}`,
                 background: C.blanc,
                 color: C.texte, borderRadius: 4,
-                padding: '3px 14px', fontSize: 12, fontWeight: 400,
+                padding: '3px 14px', fontSize: 12,
               })}>{tag}</span>
             ))}
           </div>
@@ -221,33 +199,37 @@ export default function SlideTemplate({
           {/* Périmètre */}
           <div style={{ flexShrink: 0 }}>
             <Badge>Périmètre</Badge>
-            {per.map((line, i) => <Bullet key={i} text={line} textColor={C.bleu} bold />)}
+            {per.map((line, i) => (
+              <Bullet key={i} text={line} dotColor={C.orange} textColor={C.bleu} bold />
+            ))}
           </div>
 
-          {/* Enjeux */}
+          {/* Enjeux — flex 1 pour remplir */}
           <div style={{ flex: 1, minHeight: 0 }}>
             <Badge>Les enjeux clés</Badge>
-            {enj.map((line, i) => <Bullet key={i} text={line} />)}
+            {enj.map((line, i) => (
+              <Bullet key={i} text={line} dotColor={C.orange} textColor={C.texte} />
+            ))}
           </div>
         </div>
 
-        {/* Colonne droite — 7/20 */}
+        {/* Colonne droite 7/20 */}
         <div style={{
           flex: 7, minWidth: 0,
           display: 'flex', flexDirection: 'column',
-          gap: 10, paddingBottom: 10,
+          gap: 10, paddingBottom: 8,
         }}>
           {/* Logo client */}
           {logo_url ? (
             <div style={{
               display: 'flex', justifyContent: 'center', alignItems: 'center',
-              height: 74, background: C.grisClair, borderRadius: 8, flexShrink: 0,
+              height: 74, background: C.grisClair, borderRadius: 10, flexShrink: 0,
             }}>
-              <img src={logo_url} alt="logo client" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain' }} />
+              <img src={logo_url} alt="logo client" style={{ maxHeight: 58, maxWidth: '90%', objectFit: 'contain' }} />
             </div>
           ) : (
             <div style={{
-              height: 74, background: C.grisClair, borderRadius: 8, flexShrink: 0,
+              height: 74, background: C.grisClair, borderRadius: 10, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <span style={txt({
@@ -257,52 +239,48 @@ export default function SlideTemplate({
             </div>
           )}
 
-          {/* Notre impact */}
+          {/* Notre impact — pill très arrondi */}
           <div style={{ flex: 1, minHeight: 0 }}>
             <div style={{
               background: C.orange, color: C.blanc,
-              borderRadius: 6, padding: '8px 14px',
+              borderRadius: 30, padding: '9px 14px',
               fontSize: 15, fontWeight: 400, marginBottom: 10,
               textAlign: 'center',
               fontFamily: FONT_TITLE,
               wordSpacing: 'normal', letterSpacing: 'normal',
             }}>Notre impact</div>
-            {imp.map((line, i) => <Bullet key={i} text={line} dotColor={C.bleu} />)}
+            {imp.map((line, i) => (
+              <Bullet key={i} text={line} dotColor={C.bleu} textColor={C.bleu} />
+            ))}
           </div>
 
-          {/* Métriques */}
+          {/* Métriques — chiffre ET label en orange */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
             {metriques.map((m, i) => (
               <div key={i} style={{
-                background: '#FFF4E0', borderRadius: 6,
-                padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 12,
+                background: '#FFF4E0', borderRadius: 8,
+                padding: '7px 16px', display: 'flex', alignItems: 'center', gap: 8,
               }}>
                 <span style={{
                   color: C.orange, fontWeight: 400, fontSize: 22,
-                  minWidth: 52, fontFamily: FONT_TITLE,
+                  fontFamily: FONT_TITLE,
                   wordSpacing: 'normal', letterSpacing: 'normal',
+                  flexShrink: 0,
                 }}>{m.chiffre}</span>
-                <span style={txt({ color: C.bleu, fontSize: 13 })}>{m.label}</span>
+                <span style={txt({ color: C.orange, fontSize: 13 })}>{m.label}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div style={{
-        borderTop: `3px solid ${C.bleu}`,
-        margin: '6px 28px 0',
-        paddingTop: 4, paddingBottom: 8,
-        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-        flexShrink: 0, position: 'relative', zIndex: 1,
-      }}>
-        {/* TODO: remplacer par le logo SVG inline — ajouter Logo_WeFiiT_RVB.svg dans public/logos/ */}
-        <span style={{
-          color: C.bleu, fontWeight: 400, fontSize: 18,
-          fontFamily: FONT_TITLE,
-          wordSpacing: 'normal', letterSpacing: 'normal',
-        }}>WeFiiT</span>
+      {/* ─── Footer SVG WeFiiT ─── */}
+      <div style={{ flexShrink: 0, lineHeight: 0 }}>
+        <img
+          src="/logos/footer.svg"
+          alt=""
+          style={{ width: 1280, height: 67, objectFit: 'fill', display: 'block' }}
+        />
       </div>
     </div>
   )
