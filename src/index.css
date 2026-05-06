@@ -1,3 +1,13 @@
+/* Publica Play — Titres (charte WeFiiT) */
+@font-face {
+  font-family: 'Publica Play';
+  src: url('/fonts/PublicaPlay-Medium.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Geomanist — Corps de texte (charte WeFiiT) */
 @font-face {
   font-family: 'Geomanist';
   src: url('/fonts/Geomanist-Light.otf') format('opentype');
@@ -20,23 +30,15 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'Publica Play';
-  src: url('/fonts/PublicaPlay-Medium.otf') format('opentype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: 'Publica Play', Arial, sans-serif;
-  background: #f8fafc;
-  color: #1e293b;
+  font-family: 'Geomanist', Arial, sans-serif;
+  background: #F8FAFB;
+  color: #002882;
   -webkit-font-smoothing: antialiased;
 }
 

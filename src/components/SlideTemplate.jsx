@@ -1,7 +1,17 @@
-const FONT_TITLE = "'Geomanist', Arial, sans-serif"
-const FONT_BODY  = "'Publica Play', Arial, sans-serif"
+/* Charte WeFiiT — Publica Play = titres, Geomanist = corps */
+const FONT_TITLE = "'Publica Play', Arial, sans-serif"
+const FONT_BODY  = "'Geomanist', Arial, sans-serif"
 
-/* Styles de base appliqués explicitement sur chaque texte */
+/* Couleurs officielles WeFiiT */
+const C = {
+  bleu:       '#002882',
+  orange:     '#F98F03',
+  blanc:      '#FFFFFF',
+  grisClair:  '#F8FAFB',
+  grisNeutre: '#E7E6E6',
+  texte:      '#1e293b',
+}
+
 const txt = (overrides = {}) => ({
   fontFamily: FONT_BODY,
   textAlign: 'left',
@@ -46,50 +56,36 @@ function fill(arr, phs) {
   return phs.map((ph, i) => (arr?.[i]?.trim() ? arr[i] : ph))
 }
 
-function DecorTopRight() {
+/* Motif "fil" WeFiiT — coin bas-droit, W=1280 H=720 */
+function FilMotif() {
   return (
-    <svg style={{ position: 'absolute', top: 0, right: 0, pointerEvents: 'none', zIndex: 0 }} width="220" height="200" viewBox="0 0 220 200" fill="none">
-      <g opacity="0.2" stroke="#7dd3fc" strokeWidth="1.5">
-        <line x1="220" y1="15" x2="170" y2="15" /><line x1="170" y1="15" x2="145" y2="40" />
-        <line x1="145" y1="40" x2="145" y2="90" /><line x1="145" y1="65" x2="100" y2="65" />
-        <line x1="220" y1="50" x2="185" y2="50" /><line x1="185" y1="50" x2="160" y2="75" />
-        <line x1="160" y1="75" x2="160" y2="130" /><line x1="220" y1="90" x2="175" y2="90" />
-        <circle cx="170" cy="15" r="3" fill="#7dd3fc" stroke="none" />
-        <circle cx="145" cy="40" r="3" fill="#7dd3fc" stroke="none" />
-        <circle cx="145" cy="65" r="3" fill="#7dd3fc" stroke="none" />
-        <circle cx="185" cy="50" r="3" fill="#7dd3fc" stroke="none" />
-        <circle cx="160" cy="75" r="3" fill="#7dd3fc" stroke="none" />
-        <circle cx="175" cy="90" r="3" fill="#7dd3fc" stroke="none" />
+    <svg
+      style={{ position: 'absolute', bottom: 0, right: 0, pointerEvents: 'none', zIndex: 0 }}
+      width="680" height="380"
+      viewBox="600 340 680 380"
+      fill="none"
+    >
+      <g opacity="0.22" stroke="#4a6ad0" strokeWidth="5" strokeLinecap="round">
+        <path d="M 1280 720 Q 1180 720 1180 620 Q 1180 520 1080 520 Q 1080 620 980 620 Q 980 720 880 720" />
+        <path d="M 1280 720 Q 1150 720 1150 590 Q 1150 460 1020 460 Q 1020 590 890 590 Q 890 720 760 720" />
+        <path d="M 1280 720 Q 1120 720 1120 560 Q 1120 400 960 400 Q 960 560 800 560 Q 800 720 640 720" />
       </g>
     </svg>
   )
 }
 
-function DecorTopLeft() {
-  return (
-    <svg style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 0 }} width="180" height="160" viewBox="0 0 180 160" fill="none">
-      <g opacity="0.2" stroke="#f97316" strokeWidth="1.5">
-        <line x1="0" y1="18" x2="50" y2="18" /><line x1="50" y1="18" x2="75" y2="43" />
-        <line x1="75" y1="43" x2="75" y2="85" /><line x1="75" y1="60" x2="120" y2="60" />
-        <line x1="0" y1="55" x2="35" y2="55" /><line x1="35" y1="55" x2="60" y2="80" />
-        <line x1="60" y1="80" x2="60" y2="110" />
-        <circle cx="50" cy="18" r="3" fill="#f97316" stroke="none" />
-        <circle cx="75" cy="43" r="3" fill="#f97316" stroke="none" />
-        <circle cx="75" cy="60" r="3" fill="#f97316" stroke="none" />
-        <circle cx="35" cy="55" r="3" fill="#f97316" stroke="none" />
-        <circle cx="60" cy="80" r="3" fill="#f97316" stroke="none" />
-      </g>
-    </svg>
-  )
+/* Point orange WeFiiT — accent décoratif */
+function OrangeDot({ x, y, r = 6 }) {
+  return <circle cx={x} cy={y} r={r} fill={C.orange} />
 }
 
 function Badge({ children }) {
   return (
     <div style={{
       display: 'inline-block',
-      background: '#1a2f5e', color: '#ffffff',
+      background: C.bleu, color: C.blanc,
       borderRadius: 4, padding: '3px 14px',
-      fontSize: 13, fontWeight: 700,
+      fontSize: 13, fontWeight: 400,
       marginBottom: 6,
       fontFamily: FONT_TITLE,
       textAlign: 'left',
@@ -99,17 +95,17 @@ function Badge({ children }) {
   )
 }
 
-function Bullet({ text, dotColor = '#f97316', textColor = '#334155', bold = false }) {
+function Bullet({ text, dotColor, textColor = C.texte, bold = false }) {
+  const dot = dotColor || C.orange
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 5 }}>
       <span style={{
-        color: dotColor, fontWeight: 700, flexShrink: 0,
+        color: dot, fontWeight: 700, flexShrink: 0,
         fontSize: 15, lineHeight: '18px',
         fontFamily: FONT_BODY,
       }}>•</span>
       <span style={txt({
-        fontSize: 13,
-        color: textColor,
+        fontSize: 13, color: textColor,
         lineHeight: 1.4,
         fontWeight: bold ? 700 : 400,
       })}>{text}</span>
@@ -150,7 +146,7 @@ export default function SlideTemplate({
   return (
     <div style={{
       width: 1280, height: 720,
-      background: '#ffffff',
+      background: C.blanc,
       fontFamily: FONT_BODY,
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden', position: 'relative',
@@ -158,22 +154,28 @@ export default function SlideTemplate({
       wordSpacing: 'normal',
       letterSpacing: 'normal',
     }}>
-      <DecorTopLeft />
-      <DecorTopRight />
+      {/* Motif "fil" WeFiiT — coin bas-droit */}
+      <FilMotif />
+
+      {/* Points orange décoratifs */}
+      <svg style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 0, width: 1280, height: 78, overflow: 'visible' }}>
+        <OrangeDot x={1240} y={39} r={5} />
+        <OrangeDot x={1255} y={39} r={3} />
+      </svg>
 
       {/* Header */}
       <div style={{
-        background: '#1a2f5e', padding: '0 32px',
+        background: C.bleu, padding: '0 32px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         height: 78, flexShrink: 0, position: 'relative', zIndex: 1,
       }}>
         <span style={{
-          color: '#ffffff', fontSize: 27, fontWeight: 700,
+          color: C.blanc, fontSize: 27, fontWeight: 400,
           flex: 1, fontFamily: FONT_TITLE,
           textAlign: 'left', wordSpacing: 'normal', letterSpacing: 'normal',
         }}>{t}</span>
         <span style={{
-          color: '#f97316', fontWeight: 700, fontSize: 24,
+          color: C.orange, fontWeight: 400, fontSize: 24,
           marginLeft: 20, flexShrink: 0, fontFamily: FONT_TITLE,
           wordSpacing: 'normal', letterSpacing: 'normal',
         }}>point.</span>
@@ -182,25 +184,25 @@ export default function SlideTemplate({
       {/* Sous-titre */}
       <div style={txt({
         padding: '8px 32px 5px',
-        color: '#2563eb', fontSize: 14, fontWeight: 600,
-        flexShrink: 0,
+        color: C.bleu, fontSize: 14, fontWeight: 400,
+        flexShrink: 0, fontFamily: FONT_TITLE,
       })}>{st}</div>
 
-      {/* Body — flex avec gap, colonnes en unités relatives pour éviter overflow */}
+      {/* Body */}
       <div style={{
         display: 'flex', flex: 1,
         padding: '6px 28px 0', gap: 20,
         overflow: 'hidden', minHeight: 0,
       }}>
 
-        {/* Colonne gauche — 13 unités sur 20 ≈ 65% */}
+        {/* Colonne gauche — 13/20 */}
         <div style={{
           flex: 13, minWidth: 0,
           display: 'flex', flexDirection: 'column',
           gap: 10, paddingBottom: 10,
         }}>
           {/* Contexte */}
-          <div style={{ background: '#f1f5f9', borderRadius: 8, padding: '8px 14px', flexShrink: 0 }}>
+          <div style={{ background: C.grisClair, borderRadius: 8, padding: '8px 14px', flexShrink: 0 }}>
             {ctx.map((line, i) => <Bullet key={i} text={line} />)}
           </div>
 
@@ -208,9 +210,10 @@ export default function SlideTemplate({
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             {tgs.map((tag, i) => (
               <span key={i} style={txt({
-                border: '1px solid #94a3b8', background: '#ffffff',
-                color: '#475569', borderRadius: 4,
-                padding: '3px 14px', fontSize: 12, fontWeight: 500,
+                border: `1px solid ${C.grisNeutre}`,
+                background: C.blanc,
+                color: C.texte, borderRadius: 4,
+                padding: '3px 14px', fontSize: 12, fontWeight: 400,
               })}>{tag}</span>
             ))}
           </div>
@@ -218,33 +221,33 @@ export default function SlideTemplate({
           {/* Périmètre */}
           <div style={{ flexShrink: 0 }}>
             <Badge>Périmètre</Badge>
-            {per.map((line, i) => <Bullet key={i} text={line} textColor="#1a2f5e" bold />)}
+            {per.map((line, i) => <Bullet key={i} text={line} textColor={C.bleu} bold />)}
           </div>
 
-          {/* Enjeux — flex 1 pour remplir la hauteur restante */}
+          {/* Enjeux */}
           <div style={{ flex: 1, minHeight: 0 }}>
             <Badge>Les enjeux clés</Badge>
             {enj.map((line, i) => <Bullet key={i} text={line} />)}
           </div>
         </div>
 
-        {/* Colonne droite — 7 unités sur 20 ≈ 35% */}
+        {/* Colonne droite — 7/20 */}
         <div style={{
           flex: 7, minWidth: 0,
           display: 'flex', flexDirection: 'column',
           gap: 10, paddingBottom: 10,
         }}>
-          {/* Logo */}
+          {/* Logo client */}
           {logo_url ? (
             <div style={{
               display: 'flex', justifyContent: 'center', alignItems: 'center',
-              height: 74, background: '#f8fafc', borderRadius: 8, flexShrink: 0,
+              height: 74, background: C.grisClair, borderRadius: 8, flexShrink: 0,
             }}>
               <img src={logo_url} alt="logo client" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain' }} />
             </div>
           ) : (
             <div style={{
-              height: 74, background: '#f1f5f9', borderRadius: 8, flexShrink: 0,
+              height: 74, background: C.grisClair, borderRadius: 8, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <span style={txt({
@@ -254,32 +257,32 @@ export default function SlideTemplate({
             </div>
           )}
 
-          {/* Notre impact — flex 1 pour pousser métriques en bas */}
+          {/* Notre impact */}
           <div style={{ flex: 1, minHeight: 0 }}>
             <div style={{
-              background: '#f97316', color: '#ffffff',
+              background: C.orange, color: C.blanc,
               borderRadius: 6, padding: '8px 14px',
-              fontSize: 15, fontWeight: 700, marginBottom: 10,
+              fontSize: 15, fontWeight: 400, marginBottom: 10,
               textAlign: 'center',
               fontFamily: FONT_TITLE,
               wordSpacing: 'normal', letterSpacing: 'normal',
             }}>Notre impact</div>
-            {imp.map((line, i) => <Bullet key={i} text={line} dotColor="#2563eb" />)}
+            {imp.map((line, i) => <Bullet key={i} text={line} dotColor={C.bleu} />)}
           </div>
 
           {/* Métriques */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
             {metriques.map((m, i) => (
               <div key={i} style={{
-                background: '#fef3c7', borderRadius: 6,
+                background: '#FFF4E0', borderRadius: 6,
                 padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 12,
               }}>
                 <span style={{
-                  color: '#f97316', fontWeight: 700, fontSize: 22,
+                  color: C.orange, fontWeight: 400, fontSize: 22,
                   minWidth: 52, fontFamily: FONT_TITLE,
                   wordSpacing: 'normal', letterSpacing: 'normal',
                 }}>{m.chiffre}</span>
-                <span style={txt({ color: '#78350f', fontSize: 13 })}>{m.label}</span>
+                <span style={txt({ color: C.bleu, fontSize: 13 })}>{m.label}</span>
               </div>
             ))}
           </div>
@@ -288,17 +291,18 @@ export default function SlideTemplate({
 
       {/* Footer */}
       <div style={{
-        borderTop: '3px solid #1a2f5e',
+        borderTop: `3px solid ${C.bleu}`,
         margin: '6px 28px 0',
         paddingTop: 4, paddingBottom: 8,
         display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-        flexShrink: 0,
+        flexShrink: 0, position: 'relative', zIndex: 1,
       }}>
+        {/* TODO: remplacer par le logo SVG inline — ajouter Logo_WeFiiT_RVB.svg dans public/logos/ */}
         <span style={{
-          color: '#1a2f5e', fontWeight: 700, fontSize: 18,
+          color: C.bleu, fontWeight: 400, fontSize: 18,
           fontFamily: FONT_TITLE,
           wordSpacing: 'normal', letterSpacing: 'normal',
-        }}>W.</span>
+        }}>WeFiiT</span>
       </div>
     </div>
   )
