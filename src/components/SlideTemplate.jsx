@@ -1,5 +1,15 @@
-const FONT_TITLE = "'Geomanist', 'Segoe UI', Arial, sans-serif"
-const FONT_BODY  = "'Publica Play', 'Segoe UI', Arial, sans-serif"
+const FONT_TITLE = "'Geomanist', Arial, sans-serif"
+const FONT_BODY  = "'Publica Play', Arial, sans-serif"
+
+/* Styles de base appliqués explicitement sur chaque texte */
+const txt = (overrides = {}) => ({
+  fontFamily: FONT_BODY,
+  textAlign: 'left',
+  wordSpacing: 'normal',
+  letterSpacing: 'normal',
+  fontKerning: 'none',
+  ...overrides,
+})
 
 const PH = {
   titre: 'Immersion PM – Enjeu/pbmatique mission.',
@@ -38,7 +48,7 @@ function fill(arr, phs) {
 
 function DecorTopRight() {
   return (
-    <svg style={{ position: 'absolute', top: 0, right: 0, pointerEvents: 'none' }} width="220" height="200" viewBox="0 0 220 200" fill="none">
+    <svg style={{ position: 'absolute', top: 0, right: 0, pointerEvents: 'none', zIndex: 0 }} width="220" height="200" viewBox="0 0 220 200" fill="none">
       <g opacity="0.2" stroke="#7dd3fc" strokeWidth="1.5">
         <line x1="220" y1="15" x2="170" y2="15" /><line x1="170" y1="15" x2="145" y2="40" />
         <line x1="145" y1="40" x2="145" y2="90" /><line x1="145" y1="65" x2="100" y2="65" />
@@ -57,7 +67,7 @@ function DecorTopRight() {
 
 function DecorTopLeft() {
   return (
-    <svg style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} width="180" height="160" viewBox="0 0 180 160" fill="none">
+    <svg style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 0 }} width="180" height="160" viewBox="0 0 180 160" fill="none">
       <g opacity="0.2" stroke="#f97316" strokeWidth="1.5">
         <line x1="0" y1="18" x2="50" y2="18" /><line x1="50" y1="18" x2="75" y2="43" />
         <line x1="75" y1="43" x2="75" y2="85" /><line x1="75" y1="60" x2="120" y2="60" />
@@ -79,25 +89,30 @@ function Badge({ children }) {
       display: 'inline-block',
       background: '#1a2f5e', color: '#ffffff',
       borderRadius: 4, padding: '3px 14px',
-      fontSize: 12, fontWeight: 700,
-      marginBottom: 6, letterSpacing: 0,
+      fontSize: 13, fontWeight: 700,
+      marginBottom: 6,
       fontFamily: FONT_TITLE,
+      textAlign: 'left',
+      wordSpacing: 'normal',
+      letterSpacing: 'normal',
     }}>{children}</div>
   )
 }
 
 function Bullet({ text, dotColor = '#f97316', textColor = '#334155', bold = false }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 4 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 5 }}>
       <span style={{
         color: dotColor, fontWeight: 700, flexShrink: 0,
-        fontSize: 14, lineHeight: '17px', fontFamily: FONT_BODY,
+        fontSize: 15, lineHeight: '18px',
+        fontFamily: FONT_BODY,
       }}>•</span>
-      <span style={{
-        fontSize: 12.5, color: textColor, lineHeight: 1.45,
-        fontWeight: bold ? 700 : 400, fontFamily: FONT_BODY,
-        letterSpacing: 0, wordSpacing: 'normal',
-      }}>{text}</span>
+      <span style={txt({
+        fontSize: 13,
+        color: textColor,
+        lineHeight: 1.4,
+        fontWeight: bold ? 700 : 400,
+      })}>{text}</span>
     </div>
   )
 }
@@ -136,11 +151,12 @@ export default function SlideTemplate({
     <div style={{
       width: 1280, height: 720,
       background: '#ffffff',
-      fontFamily: FONT_TITLE,
+      fontFamily: FONT_BODY,
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden', position: 'relative',
       textAlign: 'left',
-      letterSpacing: 0, wordSpacing: 'normal',
+      wordSpacing: 'normal',
+      letterSpacing: 'normal',
     }}>
       <DecorTopLeft />
       <DecorTopRight />
@@ -149,37 +165,39 @@ export default function SlideTemplate({
       <div style={{
         background: '#1a2f5e', padding: '0 32px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        height: 76, flexShrink: 0, position: 'relative', zIndex: 1,
+        height: 78, flexShrink: 0, position: 'relative', zIndex: 1,
       }}>
         <span style={{
           color: '#ffffff', fontSize: 27, fontWeight: 700,
-          letterSpacing: 0, flex: 1, fontFamily: FONT_TITLE,
+          flex: 1, fontFamily: FONT_TITLE,
+          textAlign: 'left', wordSpacing: 'normal', letterSpacing: 'normal',
         }}>{t}</span>
         <span style={{
           color: '#f97316', fontWeight: 700, fontSize: 24,
           marginLeft: 20, flexShrink: 0, fontFamily: FONT_TITLE,
+          wordSpacing: 'normal', letterSpacing: 'normal',
         }}>point.</span>
       </div>
 
       {/* Sous-titre */}
-      <div style={{
-        padding: '8px 32px 4px',
+      <div style={txt({
+        padding: '8px 32px 5px',
         color: '#2563eb', fontSize: 14, fontWeight: 600,
-        flexShrink: 0, fontFamily: FONT_BODY,
-        letterSpacing: 0, wordSpacing: 'normal',
-      }}>{st}</div>
+        flexShrink: 0,
+      })}>{st}</div>
 
-      {/* Body */}
+      {/* Body — flex avec gap, colonnes en unités relatives pour éviter overflow */}
       <div style={{
         display: 'flex', flex: 1,
         padding: '6px 28px 0', gap: 20,
         overflow: 'hidden', minHeight: 0,
       }}>
 
-        {/* Colonne gauche 65% */}
+        {/* Colonne gauche — 13 unités sur 20 ≈ 65% */}
         <div style={{
-          flex: '0 0 65%', display: 'flex', flexDirection: 'column',
-          gap: 10, paddingBottom: 10, minHeight: 0,
+          flex: 13, minWidth: 0,
+          display: 'flex', flexDirection: 'column',
+          gap: 10, paddingBottom: 10,
         }}>
           {/* Contexte */}
           <div style={{ background: '#f1f5f9', borderRadius: 8, padding: '8px 14px', flexShrink: 0 }}>
@@ -189,81 +207,79 @@ export default function SlideTemplate({
           {/* Tags */}
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             {tgs.map((tag, i) => (
-              <span key={i} style={{
+              <span key={i} style={txt({
                 border: '1px solid #94a3b8', background: '#ffffff',
                 color: '#475569', borderRadius: 4,
                 padding: '3px 14px', fontSize: 12, fontWeight: 500,
-                fontFamily: FONT_BODY, letterSpacing: 0,
-              }}>{tag}</span>
+              })}>{tag}</span>
             ))}
           </div>
 
           {/* Périmètre */}
           <div style={{ flexShrink: 0 }}>
             <Badge>Périmètre</Badge>
-            {per.map((line, i) => (
-              <Bullet key={i} text={line} textColor="#1a2f5e" bold />
-            ))}
+            {per.map((line, i) => <Bullet key={i} text={line} textColor="#1a2f5e" bold />)}
           </div>
 
-          {/* Enjeux clés — flex: 1 pour occuper l'espace restant */}
-          <div style={{ flex: 1 }}>
+          {/* Enjeux — flex 1 pour remplir la hauteur restante */}
+          <div style={{ flex: 1, minHeight: 0 }}>
             <Badge>Les enjeux clés</Badge>
             {enj.map((line, i) => <Bullet key={i} text={line} />)}
           </div>
         </div>
 
-        {/* Colonne droite 35% */}
+        {/* Colonne droite — 7 unités sur 20 ≈ 35% */}
         <div style={{
-          flex: '0 0 35%', display: 'flex', flexDirection: 'column',
-          gap: 10, paddingBottom: 10, minHeight: 0,
+          flex: 7, minWidth: 0,
+          display: 'flex', flexDirection: 'column',
+          gap: 10, paddingBottom: 10,
         }}>
           {/* Logo */}
           {logo_url ? (
             <div style={{
               display: 'flex', justifyContent: 'center', alignItems: 'center',
-              height: 72, background: '#f8fafc', borderRadius: 8, flexShrink: 0,
+              height: 74, background: '#f8fafc', borderRadius: 8, flexShrink: 0,
             }}>
-              <img src={logo_url} alt="logo client" style={{ maxHeight: 58, maxWidth: '100%', objectFit: 'contain' }} />
+              <img src={logo_url} alt="logo client" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain' }} />
             </div>
           ) : (
             <div style={{
-              height: 72, background: '#f1f5f9', borderRadius: 8, flexShrink: 0,
+              height: 74, background: '#f1f5f9', borderRadius: 8, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <span style={{
+              <span style={txt({
                 color: '#94a3b8', fontSize: 12, fontStyle: 'italic',
-                textAlign: 'center', lineHeight: 1.5, fontFamily: FONT_BODY,
-              }}>Remplacer par<br />logo client</span>
+                textAlign: 'center', lineHeight: 1.5,
+              })}>Remplacer par<br />logo client</span>
             </div>
           )}
 
-          {/* Notre impact — flex: 1 pour pousser les métriques en bas */}
-          <div style={{ flex: 1 }}>
+          {/* Notre impact — flex 1 pour pousser métriques en bas */}
+          <div style={{ flex: 1, minHeight: 0 }}>
             <div style={{
               background: '#f97316', color: '#ffffff',
               borderRadius: 6, padding: '8px 14px',
-              fontSize: 14, fontWeight: 700, marginBottom: 10,
-              textAlign: 'center', fontFamily: FONT_BODY, letterSpacing: 0,
+              fontSize: 15, fontWeight: 700, marginBottom: 10,
+              textAlign: 'center',
+              fontFamily: FONT_TITLE,
+              wordSpacing: 'normal', letterSpacing: 'normal',
             }}>Notre impact</div>
             {imp.map((line, i) => <Bullet key={i} text={line} dotColor="#2563eb" />)}
           </div>
 
           {/* Métriques */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
             {metriques.map((m, i) => (
               <div key={i} style={{
                 background: '#fef3c7', borderRadius: 6,
-                padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 12,
+                padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 12,
               }}>
                 <span style={{
-                  color: '#f97316', fontWeight: 800, fontSize: 18,
-                  minWidth: 44, fontFamily: FONT_TITLE, letterSpacing: 0, fontWeight: 700,
+                  color: '#f97316', fontWeight: 700, fontSize: 22,
+                  minWidth: 52, fontFamily: FONT_TITLE,
+                  wordSpacing: 'normal', letterSpacing: 'normal',
                 }}>{m.chiffre}</span>
-                <span style={{
-                  color: '#78350f', fontSize: 12,
-                  fontFamily: FONT_BODY, letterSpacing: 0,
-                }}>{m.label}</span>
+                <span style={txt({ color: '#78350f', fontSize: 13 })}>{m.label}</span>
               </div>
             ))}
           </div>
@@ -279,8 +295,9 @@ export default function SlideTemplate({
         flexShrink: 0,
       }}>
         <span style={{
-          color: '#1a2f5e', fontWeight: 800, fontSize: 16,
-          letterSpacing: 1, fontFamily: FONT_TITLE,
+          color: '#1a2f5e', fontWeight: 700, fontSize: 18,
+          fontFamily: FONT_TITLE,
+          wordSpacing: 'normal', letterSpacing: 'normal',
         }}>W.</span>
       </div>
     </div>
