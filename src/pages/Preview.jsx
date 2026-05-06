@@ -60,6 +60,13 @@ export default function Preview() {
     saveLayout(id, DEFAULT_LAYOUT)
   }
 
+  const [copied, setCopied] = useState(false)
+  const handleCopyLayout = () => {
+    navigator.clipboard.writeText(JSON.stringify(layout, null, 2))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const exportPNG = async () => {
     if (!slideRef.current) return
     setExporting(true)
@@ -102,8 +109,11 @@ export default function Preview() {
             <button onClick={handleReset} style={{ ...btn('#64748b'), fontSize: 12 }}>
               Réinitialiser
             </button>
+            <button onClick={handleCopyLayout} style={{ ...btn(copied ? '#16a34a' : '#7c3aed'), fontSize: 12 }}>
+              {copied ? '✓ Copié !' : '📋 Copier le layout'}
+            </button>
             <span style={{ color: '#94a3b8', fontSize: 12, marginLeft: 4 }}>
-              Glisse et redimensionne les blocs orange
+              Glisse · redimensionne · puis colle le layout à Claude
             </span>
           </>
         )}
