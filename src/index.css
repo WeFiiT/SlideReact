@@ -1,51 +1,29 @@
-/* Geomanist — titres et badges */
 @font-face {
   font-family: 'Geomanist';
-  src: url('/fonts/Geomanist-Regular.woff2') format('woff2'),
-       url('/fonts/Geomanist-Regular.woff') format('woff');
+  src: url('/fonts/Geomanist-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geomanist';
+  src: url('/fonts/Geomanist-Regular.otf') format('opentype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Geomanist';
-  src: url('/fonts/Geomanist-Medium.woff2') format('woff2'),
-       url('/fonts/Geomanist-Medium.woff') format('woff');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Geomanist';
-  src: url('/fonts/Geomanist-Bold.woff2') format('woff2'),
-       url('/fonts/Geomanist-Bold.woff') format('woff');
+  src: url('/fonts/Geomanist-Bold.otf') format('opentype');
   font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Geomanist';
-  src: url('/fonts/Geomanist-ExtraBold.woff2') format('woff2'),
-       url('/fonts/Geomanist-ExtraBold.woff') format('woff');
-  font-weight: 800;
   font-style: normal;
   font-display: swap;
 }
 
-/* Publica Play — corps de texte */
 @font-face {
   font-family: 'Publica Play';
-  src: url('/fonts/PublicaPlay-Regular.woff2') format('woff2'),
-       url('/fonts/PublicaPlay-Regular.woff') format('woff');
+  src: url('/fonts/PublicaPlay-Medium.otf') format('opentype');
   font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Publica Play';
-  src: url('/fonts/PublicaPlay-Bold.woff2') format('woff2'),
-       url('/fonts/PublicaPlay-Bold.woff') format('woff');
-  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
@@ -56,7 +34,7 @@
 
 body {
   margin: 0;
-  font-family: 'Publica Play', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Publica Play', Arial, sans-serif;
   background: #f8fafc;
   color: #1e293b;
   -webkit-font-smoothing: antialiased;

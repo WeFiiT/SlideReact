@@ -152,11 +152,11 @@ export default function SlideTemplate({
         height: 76, flexShrink: 0, position: 'relative', zIndex: 1,
       }}>
         <span style={{
-          color: '#ffffff', fontSize: 27, fontWeight: 800,
+          color: '#ffffff', fontSize: 27, fontWeight: 700,
           letterSpacing: 0, flex: 1, fontFamily: FONT_TITLE,
         }}>{t}</span>
         <span style={{
-          color: '#f97316', fontWeight: 800, fontSize: 24,
+          color: '#f97316', fontWeight: 700, fontSize: 24,
           marginLeft: 20, flexShrink: 0, fontFamily: FONT_TITLE,
         }}>point.</span>
       </div>
@@ -258,7 +258,7 @@ export default function SlideTemplate({
               }}>
                 <span style={{
                   color: '#f97316', fontWeight: 800, fontSize: 18,
-                  minWidth: 44, fontFamily: FONT_TITLE, letterSpacing: 0,
+                  minWidth: 44, fontFamily: FONT_TITLE, letterSpacing: 0, fontWeight: 700,
                 }}>{m.chiffre}</span>
                 <span style={{
                   color: '#78350f', fontSize: 12,
