@@ -101,8 +101,16 @@ Deno.serve(async (req) => {
     slideId = inserted[0]?.id
   }
 
+  // Écrire l'URL de la slide dans la propriété "Slide" de Notion
+  const slideUrl = `https://slidereact.rodserver.fr/preview/${slideId}`
+  await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+    method: 'PATCH',
+    headers: notionHeaders,
+    body: JSON.stringify({ properties: { 'Slide URL': { url: slideUrl } } }),
+  })
+
   return new Response(
-    JSON.stringify({ slideId, url: `/preview/${slideId}` }),
+    JSON.stringify({ slideId, url: slideUrl }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   )
 })
