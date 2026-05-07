@@ -9,7 +9,13 @@ const TOOLBAR_H = 56
 function loadLayout(id) {
   try {
     const s = localStorage.getItem(`slide_layout_${id}`)
-    return s ? JSON.parse(s) : DEFAULT_LAYOUT
+    if (!s) return DEFAULT_LAYOUT
+    const stored = JSON.parse(s)
+    const layout = { ...DEFAULT_LAYOUT, ...stored, logo: { ...DEFAULT_LAYOUT.logo, ...stored.logo } }
+    if ((stored.logo?.y === 168 && stored.logo?.h === 60) || (stored.logo?.y === 140 && stored.logo?.h === 90)) {
+      layout.logo = DEFAULT_LAYOUT.logo
+    }
+    return layout
   } catch { return DEFAULT_LAYOUT }
 }
 

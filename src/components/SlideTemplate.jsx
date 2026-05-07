@@ -27,7 +27,7 @@ export const DEFAULT_LAYOUT = {
   tags:      { x: PAD_X,   y: 282,  w: LEFT_W, h: 38  },
   perimetre: { x: PAD_X,   y: 334,  w: LEFT_W, h: 140 },
   enjeux:    { x: PAD_X,   y: 488,  w: LEFT_W, h: 180 },
-  logo:      { x: RIGHT_X, y: 168,  w: RIGHT_W, h: 60 },
+  logo:      { x: RIGHT_X, y: 101,  w: RIGHT_W, h: 135 },
   impact:    { x: RIGHT_X, y: 236,  w: RIGHT_W, h: 180},
   metriques: { x: RIGHT_X, y: 476,  w: RIGHT_W, h: 131},
 }
