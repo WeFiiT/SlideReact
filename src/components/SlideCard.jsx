@@ -8,16 +8,8 @@ export default function SlideCard({ slide, onDeleted }) {
   const navigate = useNavigate()
   const thumbRef = useRef(null)
   const [thumbScale, setThumbScale] = useState(0.25)
-  const [consultant, setConsultant] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
-
-  useEffect(() => {
-    try {
-      const c = JSON.parse(localStorage.getItem(`slide_consultant_${slide.id}`) || 'null')
-      setConsultant(c)
-    } catch {}
-  }, [slide.id])
 
   useEffect(() => {
     if (!thumbRef.current) return
@@ -70,7 +62,7 @@ export default function SlideCard({ slide, onDeleted }) {
       <div style={{ padding: '14px 16px 10px', flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: '#002882', lineHeight: 1.3 }}>
-            {consultant?.card_titre || slide.titre || '(sans titre)'}
+            {slide.card_titre || slide.titre || '(sans titre)'}
           </div>
           {(() => { const s = STATUS_STYLES[computeStatus(slide)]; return (
             <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: s.color, background: s.bg, borderRadius: 20, padding: '2px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -93,9 +85,9 @@ export default function SlideCard({ slide, onDeleted }) {
               </span>
             )}
           </div>
-          {consultant && (
+          {(slide.prenom || slide.nom) && (
             <span style={{ fontSize: 12, fontWeight: 600, color: '#475569', background: '#f1f5f9', borderRadius: 20, padding: '2px 10px' }}>
-              {consultant.prenom} {consultant.nom}
+              {slide.prenom} {slide.nom}
             </span>
           )}
         </div>
@@ -124,7 +116,7 @@ export default function SlideCard({ slide, onDeleted }) {
             <div style={{ fontSize: 20, marginBottom: 10 }}>🗑️</div>
             <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 6 }}>Supprimer cette slide ?</div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.5 }}>
-              « {consultant?.card_titre || slide.titre || 'Sans titre'} » sera supprimée définitivement.
+              « {slide.card_titre || slide.titre || 'Sans titre'} » sera supprimée définitivement.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button

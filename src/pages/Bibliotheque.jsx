@@ -25,9 +25,6 @@ export default function Bibliotheque() {
   const [typeFilter,   setTypeFilter]   = useState(null)
   const [statusFilter, setStatusFilter] = useState(null)
 
-  /* Cache localStorage consultant par slide id */
-  const [consultants, setConsultants] = useState({})
-
   useEffect(() => {
     supabase.from('slides').select('*').order('created_at', { ascending: false })
       .then(({ data, error }) => {
@@ -37,18 +34,6 @@ export default function Bibliotheque() {
       })
   }, [])
 
-  /* Charger les données consultant depuis localStorage quand slides changent */
-  useEffect(() => {
-    const map = {}
-    slides.forEach(s => {
-      try {
-        const c = JSON.parse(localStorage.getItem(`slide_consultant_${s.id}`) || 'null')
-        if (c) map[s.id] = c
-      } catch {}
-    })
-    setConsultants(map)
-  }, [slides])
-
   const handleDeleted = (id) => setSlides((prev) => prev.filter((s) => s.id !== id))
 
   /* Filtrage client-side */
@@ -57,13 +42,10 @@ export default function Bibliotheque() {
 
     if (search.trim()) {
       const q = search.toLowerCase()
-      result = result.filter(s => {
-        const c = consultants[s.id]
-        return [
-          c?.card_titre, s.titre, s.sous_titre,
-          c?.prenom, c?.nom,
-        ].some(v => v?.toLowerCase().includes(q))
-      })
+      result = result.filter(s =>
+        [s.card_titre, s.titre, s.sous_titre, s.prenom, s.nom]
+          .some(v => v?.toLowerCase().includes(q))
+      )
     }
 
     if (dateFilter !== 'all') {
@@ -81,7 +63,7 @@ export default function Bibliotheque() {
     }
 
     return result
-  }, [slides, search, dateFilter, typeFilter, statusFilter, consultants])
+  }, [slides, search, dateFilter, typeFilter, statusFilter])
 
   const canCreate = draft.prenom.trim() && draft.nom.trim() && draft.titre.trim()
 
@@ -93,14 +75,13 @@ export default function Bibliotheque() {
       .insert({
         contexte: [], tags: [], perimetre: [], enjeux: [], impact: [],
         type_mission: draft.type_mission || null,
+        prenom:       draft.prenom.trim(),
+        nom:          draft.nom.trim(),
+        card_titre:   draft.titre.trim(),
       })
       .select()
       .single()
     if (error) { alert('Erreur : ' + error.message); setCreating(false); return }
-    localStorage.setItem(
-      `slide_consultant_${data.id}`,
-      JSON.stringify({ prenom: draft.prenom.trim(), nom: draft.nom.trim(), card_titre: draft.titre.trim() })
-    )
     setCreating(false)
     setShowModal(false)
     setDraft({ prenom: '', nom: '', titre: '', type_mission: '' })

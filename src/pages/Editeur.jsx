@@ -16,9 +16,10 @@ const EMPTY = {
   metrique_3_chiffre: '', metrique_3_label: '',
   logo_url: '',
   type_mission: '',
+  prenom: '',
+  nom: '',
+  card_titre: '',
 }
-
-const EMPTY_CONSULTANT = { prenom: '', nom: '', card_titre: '' }
 
 export default function Editeur() {
   const { id } = useParams()
@@ -27,20 +28,10 @@ export default function Editeur() {
   const fileInputRef = useRef(null)
 
   const [form, setForm]           = useState(EMPTY)
-  const [consultant, setConsultant] = useState(EMPTY_CONSULTANT)
   const [loading, setLoading]     = useState(isEditing)
   const [saving, setSaving]       = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
-
-  useEffect(() => {
-    /* Charger les infos consultant depuis localStorage */
-    if (!id) return
-    try {
-      const c = JSON.parse(localStorage.getItem(`slide_consultant_${id}`) || '{}')
-      setConsultant({ prenom: c.prenom || '', nom: c.nom || '', card_titre: c.card_titre || '' })
-    } catch {}
-  }, [id])
 
   useEffect(() => {
     if (!isEditing) return
@@ -55,6 +46,9 @@ export default function Editeur() {
           enjeux:       data.enjeux?.length    ? data.enjeux    : ['', '', ''],
           impact:       data.impact?.length    ? data.impact    : ['', '', ''],
           type_mission: data.type_mission || '',
+          prenom:       data.prenom       || '',
+          nom:          data.nom          || '',
+          card_titre:   data.card_titre   || '',
         })
         setLoading(false)
       })
@@ -95,7 +89,10 @@ export default function Editeur() {
       perimetre:    form.perimetre.filter(Boolean),
       enjeux:       form.enjeux.filter(Boolean),
       impact:       form.impact.filter(Boolean),
-      type_mission: form.type_mission || null,
+      type_mission: form.type_mission  || null,
+      prenom:       form.prenom.trim() || null,
+      nom:          form.nom.trim()    || null,
+      card_titre:   form.card_titre.trim() || null,
     }
     let error, data
     if (isEditing) {
@@ -104,21 +101,8 @@ export default function Editeur() {
       ;({ data, error } = await supabase.from('slides').insert(payload).select().single())
     }
     if (error) { setSaving(false); alert('Erreur : ' + error.message); return }
-
-    /* Sauvegarder les infos consultant dans localStorage */
-    const savedId = isEditing ? id : data.id
-    try {
-      const existing = JSON.parse(localStorage.getItem(`slide_consultant_${savedId}`) || '{}')
-      localStorage.setItem(`slide_consultant_${savedId}`, JSON.stringify({
-        ...existing,
-        prenom:     consultant.prenom.trim(),
-        nom:        consultant.nom.trim(),
-        card_titre: consultant.card_titre.trim(),
-      }))
-    } catch {}
-
     setSaving(false)
-    navigate(`/preview/${savedId}`)
+    navigate(`/preview/${isEditing ? id : data.id}`)
   }
 
   if (loading) return <p style={{ padding: 32, color: '#64748b' }}>Chargement…</p>
@@ -149,13 +133,13 @@ export default function Editeur() {
         {/* ── Carte bibliothèque ── */}
         <Card icon="🗂️" color="#475569" title="Carte bibliothèque" desc="Métadonnées affichées dans la bibliothèque — pas sur la slide">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', marginBottom: 12 }}>
-            <Field label="Prénom du consultant" value={consultant.prenom}
-              onChange={v => setConsultant(c => ({ ...c, prenom: v }))} placeholder="Ex : Marie" />
-            <Field label="Nom du consultant" value={consultant.nom}
-              onChange={v => setConsultant(c => ({ ...c, nom: v }))} placeholder="Ex : Dupont" />
+            <Field label="Prénom du consultant" value={form.prenom}
+              onChange={v => set('prenom', v)} placeholder="Ex : Marie" />
+            <Field label="Nom du consultant" value={form.nom}
+              onChange={v => set('nom', v)} placeholder="Ex : Dupont" />
           </div>
-          <Field label="Titre de la carte" value={consultant.card_titre}
-            onChange={v => setConsultant(c => ({ ...c, card_titre: v }))} placeholder="Ex : Transformation digitale RH" />
+          <Field label="Titre de la carte" value={form.card_titre}
+            onChange={v => set('card_titre', v)} placeholder="Ex : Transformation digitale RH" />
           <div style={{ marginTop: 14 }}>
             <label style={labelStyle}>Type de mission</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>

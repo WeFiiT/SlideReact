@@ -122,8 +122,7 @@ export default function Preview() {
       })
       document.body.removeChild(wrapper)
 
-      const meta = (() => { try { return JSON.parse(localStorage.getItem(`slide_consultant_${id}`) || 'null') } catch { return null } })()
-      const filename = (meta?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
+      const filename = (slide?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
 
       const link = document.createElement('a')
       link.download = `${filename}.png`
