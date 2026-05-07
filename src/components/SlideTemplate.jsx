@@ -164,11 +164,11 @@ export default function SlideTemplate({
   const t   = titre?.trim()      || (textEditMode ? '' : PH.titre)
   const st  = sous_titre?.trim() || ''
 
-  const ctx = [0,1,2].map(i => contexte[i]?.trim() ?? '')
-  const tgs = [0,1,2,3].map(i => tags[i]?.trim() ?? '')
-  const per = [0,1,2].map(i => perimetre[i]?.trim() ?? '')
-  const enj = [0,1,2].map(i => enjeux[i]?.trim() ?? '')
-  const imp = [0,1,2].map(i => impact[i]?.trim() ?? '')
+  const ctx = [0,1,2].map(i => contexte?.[i]?.trim() ?? '')
+  const tgs = [0,1,2,3].map(i => tags?.[i]?.trim() ?? '')
+  const per = [0,1,2].map(i => perimetre?.[i]?.trim() ?? '')
+  const enj = [0,1,2].map(i => enjeux?.[i]?.trim() ?? '')
+  const imp = [0,1,2].map(i => impact?.[i]?.trim() ?? '')
 
   const mChiffres = [metrique_1_chiffre, metrique_2_chiffre, metrique_3_chiffre].map(v => v?.trim() ?? '')
   const mLabels   = [metrique_1_label,   metrique_2_label,   metrique_3_label  ].map(v => v?.trim() ?? '')

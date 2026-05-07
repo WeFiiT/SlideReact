@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
@@ -19,6 +19,10 @@ function saveLayout(id, layout) {
 export default function Preview() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const autoExportParam = searchParams.get('export') === '1'
+  const editParam      = searchParams.get('edit')   === '1'
+  const autoExportDone = useRef(false)
   const slideRef = useRef(null)
   const saveTimer = useRef(null)
 
@@ -52,6 +56,18 @@ export default function Preview() {
     window.addEventListener('resize', upd)
     return () => window.removeEventListener('resize', upd)
   }, [])
+
+  /* Auto-export si URL contient ?export=1 (depuis la bibliothèque) */
+  useEffect(() => {
+    if (!autoExportParam || loading || !slide || autoExportDone.current) return
+    autoExportDone.current = true
+    exportPNG()
+  }, [autoExportParam, loading, slide])
+
+  /* Active le mode édition texte si ?edit=1 */
+  useEffect(() => {
+    if (editParam && slide && !loading) setTextEditMode(true)
+  }, [editParam, slide, loading])
 
   /* Sauvegarde Supabase debouncée (800ms) */
   const schedSave = (updated) => {
@@ -129,6 +145,7 @@ export default function Preview() {
       <div style={{ height: TOOLBAR_H, display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', background: '#1e293b', flexShrink: 0 }}>
 
         <button onClick={() => navigate('/')} style={btn('#475569')}>← Biblio</button>
+        <button onClick={() => navigate(`/editeur/${id}`)} style={btn('#334155', 12)}>Formulaire</button>
 
         <div style={{ width: 1, height: 24, background: '#334155' }} />
 
