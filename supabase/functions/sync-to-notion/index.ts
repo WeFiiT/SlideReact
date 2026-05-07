@@ -1,14 +1,3 @@
-const NOTION_TOKEN    = Deno.env.get('NOTION_TOKEN')!
-const NOTION_DB_ID    = Deno.env.get('NOTION_DATABASE_ID')!
-const SUPABASE_URL    = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-const notionHeaders = {
-  'Authorization': `Bearer ${NOTION_TOKEN}`,
-  'Notion-Version': '2022-06-28',
-  'Content-Type': 'application/json',
-}
-
 function text(value: string | null | undefined) {
   return { rich_text: [{ text: { content: value?.trim() ?? '' } }] }
 }
@@ -48,15 +37,35 @@ function slideToProps(s: any) {
 }
 
 Deno.serve(async (req) => {
+  // Toujours 200 vers le webhook pour éviter les retries
+  const ok = new Response('OK', { status: 200 })
+
+  const NOTION_TOKEN       = Deno.env.get('NOTION_TOKEN')
+  const NOTION_DB_ID       = Deno.env.get('NOTION_DATABASE_ID')
+  const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')
+  const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+  if (!NOTION_TOKEN || !NOTION_DB_ID) {
+    console.error('Missing env vars — NOTION_TOKEN:', !!NOTION_TOKEN, 'NOTION_DB_ID:', !!NOTION_DB_ID)
+    return ok
+  }
+
+  const notionHeaders = {
+    'Authorization': `Bearer ${NOTION_TOKEN}`,
+    'Notion-Version': '2022-06-28',
+    'Content-Type': 'application/json',
+  }
+
   let slide: any
   try {
     const body = await req.json()
     slide = body.record
-    if (!slide) return new Response('No record', { status: 400 })
   } catch (e) {
-    console.error('JSON parse error', e)
-    return new Response('Invalid JSON', { status: 400 })
+    console.error('JSON parse error:', e)
+    return ok
   }
+
+  if (!slide) return ok
 
   const props = slideToProps(slide)
 
@@ -67,10 +76,11 @@ Deno.serve(async (req) => {
         headers: notionHeaders,
         body: JSON.stringify({ properties: props }),
       })
+      const data = await res.json()
       if (!res.ok) {
-        const err = await res.json()
-        console.error('Notion PATCH error:', JSON.stringify(err))
-        return new Response(JSON.stringify(err), { status: 500 })
+        console.error('Notion PATCH error:', JSON.stringify(data))
+      } else {
+        console.log('Notion PATCH OK for page', slide.notion_page_id)
       }
     } else {
       const res = await fetch('https://api.notion.com/v1/pages', {
@@ -78,27 +88,26 @@ Deno.serve(async (req) => {
         headers: notionHeaders,
         body: JSON.stringify({ parent: { database_id: NOTION_DB_ID }, properties: props }),
       })
+      const data = await res.json()
       if (!res.ok) {
-        const err = await res.json()
-        console.error('Notion POST error:', JSON.stringify(err))
-        return new Response(JSON.stringify(err), { status: 500 })
+        console.error('Notion POST error:', JSON.stringify(data))
+      } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/slides?id=eq.${slide.id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_SERVICE_KEY!,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ notion_page_id: data.id }),
+        })
+        console.log('Notion page created:', data.id)
       }
-      const notionPage = await res.json()
-      await fetch(`${SUPABASE_URL}/rest/v1/slides?id=eq.${slide.id}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify({ notion_page_id: notionPage.id }),
-      })
     }
   } catch (e) {
-    console.error('Unexpected error:', e)
-    return new Response(String(e), { status: 500 })
+    console.error('Unexpected error:', String(e))
   }
 
-  return new Response('OK', { status: 200 })
+  return ok
 })
