@@ -38,7 +38,6 @@ function slideToProps(s: any) {
     'Impact 1':          text(s.impact?.[0]),
     'Impact 2':          text(s.impact?.[1]),
     'Impact 3':          text(s.impact?.[2]),
-    'Logo URL':          { url: s.logo_url?.trim() || null },
     'Métrique 1 - Chiffre': text(s.metrique_1_chiffre),
     'Métrique 1 - Label':   text(s.metrique_1_label),
     'Métrique 2 - Chiffre': text(s.metrique_2_chiffre),
@@ -49,49 +48,56 @@ function slideToProps(s: any) {
 }
 
 Deno.serve(async (req) => {
-  const body = await req.json()
-  const slide = body.record
-  if (!slide) return new Response('No record', { status: 400 })
+  let slide: any
+  try {
+    const body = await req.json()
+    slide = body.record
+    if (!slide) return new Response('No record', { status: 400 })
+  } catch (e) {
+    console.error('JSON parse error', e)
+    return new Response('Invalid JSON', { status: 400 })
+  }
 
   const props = slideToProps(slide)
 
-  if (slide.notion_page_id) {
-    // Mettre à jour la page Notion existante
-    const res = await fetch(`https://api.notion.com/v1/pages/${slide.notion_page_id}`, {
-      method: 'PATCH',
-      headers: notionHeaders,
-      body: JSON.stringify({ properties: props }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      console.error('Notion PATCH error', err)
-      return new Response(JSON.stringify(err), { status: 500 })
+  try {
+    if (slide.notion_page_id) {
+      const res = await fetch(`https://api.notion.com/v1/pages/${slide.notion_page_id}`, {
+        method: 'PATCH',
+        headers: notionHeaders,
+        body: JSON.stringify({ properties: props }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        console.error('Notion PATCH error:', JSON.stringify(err))
+        return new Response(JSON.stringify(err), { status: 500 })
+      }
+    } else {
+      const res = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST',
+        headers: notionHeaders,
+        body: JSON.stringify({ parent: { database_id: NOTION_DB_ID }, properties: props }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        console.error('Notion POST error:', JSON.stringify(err))
+        return new Response(JSON.stringify(err), { status: 500 })
+      }
+      const notionPage = await res.json()
+      await fetch(`${SUPABASE_URL}/rest/v1/slides?id=eq.${slide.id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({ notion_page_id: notionPage.id }),
+      })
     }
-  } else {
-    // Créer une nouvelle page dans la base Notion
-    const res = await fetch('https://api.notion.com/v1/pages', {
-      method: 'POST',
-      headers: notionHeaders,
-      body: JSON.stringify({ parent: { database_id: NOTION_DB_ID }, properties: props }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      console.error('Notion POST error', err)
-      return new Response(JSON.stringify(err), { status: 500 })
-    }
-    const notionPage = await res.json()
-
-    // Sauvegarder le notion_page_id dans Supabase
-    await fetch(`${SUPABASE_URL}/rest/v1/slides?id=eq.${slide.id}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify({ notion_page_id: notionPage.id }),
-    })
+  } catch (e) {
+    console.error('Unexpected error:', e)
+    return new Response(String(e), { status: 500 })
   }
 
   return new Response('OK', { status: 200 })
