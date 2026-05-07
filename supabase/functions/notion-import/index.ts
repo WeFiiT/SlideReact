@@ -25,30 +25,26 @@ async function uploadLogoFromNotion(
   page: any,
   sbHeaders: Record<string, string>,
 ): Promise<string | null> {
-  // Trouver la propriété logo (type files direct ou rollup de files)
-  const logoKey = Object.keys(page.properties).find(k => {
-    const p = page.properties[k]
-    return k.toLowerCase().includes('logo') && (
-      p.type === 'files' ||
-      (p.type === 'rollup' && p.rollup?.type === 'array')
-    )
+  // 1. Lire la relation "Client" pour obtenir l'ID de la page client
+  const clientProp = page.properties['Client']
+  const clientPageId: string | undefined = clientProp?.relation?.[0]?.id
+  if (!clientPageId) { console.log('No client relation found'); return null }
+
+  // 2. Charger la page client depuis Notion
+  const clientRes = await fetch(`https://api.notion.com/v1/pages/${clientPageId}`, {
+    headers: notionHeaders,
   })
-  if (!logoKey) return null
+  if (!clientRes.ok) { console.error('Failed to fetch client page'); return null }
+  const clientPage = await clientRes.json()
 
-  const p = page.properties[logoKey]
-
-  // Extraire la liste de fichiers selon le type (direct ou rollup)
-  let files: any[] = []
-  if (p.type === 'files') {
-    files = p.files ?? []
-  } else if (p.type === 'rollup') {
-    for (const item of p.rollup?.array ?? []) {
-      if (item.type === 'files') files.push(...(item.files ?? []))
-    }
+  // 3. Lire la propriété "Logo" (type files) sur la page client
+  const logoProp = clientPage.properties['Logo']
+  if (!logoProp || logoProp.type !== 'files' || !logoProp.files?.length) {
+    console.log('No logo files on client page')
+    return null
   }
-  if (!files.length) return null
 
-  const file = files[0]
+  const file = logoProp.files[0]
   const fileUrl = file.type === 'file' ? file.file?.url : file.external?.url
   const fileName: string = file.name || 'logo.png'
   if (!fileUrl) return null
@@ -110,13 +106,6 @@ Deno.serve(async (req) => {
     'apikey': SUPABASE_SERVICE_KEY,
     'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
     'Content-Type': 'application/json',
-  }
-
-  // Debug : afficher toutes les propriétés de type files ou rollup
-  for (const [k, v] of Object.entries(page.properties) as [string, any][]) {
-    if (v.type === 'files' || v.type === 'rollup') {
-      console.log(`PROP "${k}" type=${v.type}`, JSON.stringify(v).slice(0, 400))
-    }
   }
 
   // Upload du logo depuis Notion → Supabase Storage
