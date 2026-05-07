@@ -25,16 +25,30 @@ async function uploadLogoFromNotion(
   page: any,
   sbHeaders: Record<string, string>,
 ): Promise<string | null> {
-  // Trouver la première propriété de type "files" dont le nom contient "logo"
-  const logoKey = Object.keys(page.properties).find(
-    k => page.properties[k].type === 'files' && k.toLowerCase().includes('logo')
-  )
+  // Trouver la propriété logo (type files direct ou rollup de files)
+  const logoKey = Object.keys(page.properties).find(k => {
+    const p = page.properties[k]
+    return k.toLowerCase().includes('logo') && (
+      p.type === 'files' ||
+      (p.type === 'rollup' && p.rollup?.type === 'array')
+    )
+  })
   if (!logoKey) return null
 
   const p = page.properties[logoKey]
-  if (!p?.files?.length) return null
 
-  const file = p.files[0]
+  // Extraire la liste de fichiers selon le type (direct ou rollup)
+  let files: any[] = []
+  if (p.type === 'files') {
+    files = p.files ?? []
+  } else if (p.type === 'rollup') {
+    for (const item of p.rollup?.array ?? []) {
+      if (item.type === 'files') files.push(...(item.files ?? []))
+    }
+  }
+  if (!files.length) return null
+
+  const file = files[0]
   const fileUrl = file.type === 'file' ? file.file?.url : file.external?.url
   const fileName: string = file.name || 'logo.png'
   if (!fileUrl) return null
