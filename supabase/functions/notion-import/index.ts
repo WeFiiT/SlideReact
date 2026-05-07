@@ -112,6 +112,13 @@ Deno.serve(async (req) => {
     'Content-Type': 'application/json',
   }
 
+  // Debug : afficher toutes les propriétés de type files ou rollup
+  for (const [k, v] of Object.entries(page.properties) as [string, any][]) {
+    if (v.type === 'files' || v.type === 'rollup') {
+      console.log(`PROP "${k}" type=${v.type}`, JSON.stringify(v).slice(0, 400))
+    }
+  }
+
   // Upload du logo depuis Notion → Supabase Storage
   const logoUrl = await uploadLogoFromNotion(page, sbHeaders)
 

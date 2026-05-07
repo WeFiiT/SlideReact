@@ -4,7 +4,7 @@ function text(value: string | null | undefined) {
 
 function slideToProps(s: any) {
   return {
-    'Titre de la carte': { title: [{ text: { content: s.card_titre?.trim() ?? '' } }] },
+    'Titre de la carte': text(s.card_titre),
     'Prénom':            text(s.prenom),
     'Nom':               text(s.nom),
     'Type de mission':   s.type_mission ? { select: { name: s.type_mission } } : { select: null },
