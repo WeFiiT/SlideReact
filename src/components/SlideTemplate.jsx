@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Rnd } from 'react-rnd'
 
 const FONT_TITLE = "'Publica Play', Arial, sans-serif"
@@ -73,47 +74,66 @@ function fill(arr, phs) {
 }
 
 /* ─── Édition inline ───────────────────────────────────────── */
-function phHtml(placeholder, styleColor) {
-  if (!placeholder) return ''
-  const color = (styleColor === '#ffffff' || styleColor === C.blanc)
-    ? 'rgba(255,255,255,0.45)' : '#aab0c8'
-  return `<span data-ph style="color:${color};font-style:italic;pointer-events:none">${placeholder}</span>`
-}
-
 function EditText({ value, placeholder, onSave, style = {}, tag: Tag = 'span', multiline = false }) {
-  if (!onSave) return <Tag style={style}>{value || ''}</Tag>
+  const elRef   = useRef(null)
+  const editing = useRef(false)   // bloque les mises à jour React pendant la frappe
 
-  const isEmpty = !value?.trim()
-  const html = isEmpty ? phHtml(placeholder, style.color) : (value ?? '')
+  const phColor = (style.color === '#ffffff' || style.color === C.blanc)
+    ? 'rgba(255,255,255,0.45)' : '#aab0c8'
+  const phHTML = placeholder
+    ? `<span data-ph style="color:${phColor};font-style:italic;pointer-events:none;user-select:none">${placeholder}</span>`
+    : ''
+
+  /* Met à jour le DOM seulement quand on n'est pas en train d'éditer */
+  useLayoutEffect(() => {
+    if (!elRef.current || editing.current) return
+    if (value?.trim()) {
+      elRef.current.innerText = value
+    } else {
+      elRef.current.innerHTML = phHTML
+    }
+  }, [value, phHTML])
+
+  if (!onSave) return <Tag style={style}>{value || ''}</Tag>
 
   return (
     <Tag
+      ref={elRef}
       contentEditable
       suppressContentEditableWarning
-      onFocus={e => {
-        if (e.currentTarget.querySelector('[data-ph]')) {
-          e.currentTarget.innerHTML = ''
+      onFocus={() => {
+        editing.current = true
+        /* Efface le placeholder au focus pour laisser le champ propre */
+        if (elRef.current?.querySelector('[data-ph]')) {
+          elRef.current.innerHTML = ''
         }
       }}
       onBlur={e => {
+        editing.current = false
+        /* Si le placeholder est encore là (cas rare), ne rien sauvegarder */
+        if (e.currentTarget.querySelector('[data-ph]')) return
         const v = e.currentTarget.innerText.trim()
         if (v !== (value ?? '')) onSave(v)
       }}
       onKeyDown={e => {
         if (!multiline && e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
-        if (e.key === 'Escape') { e.currentTarget.innerHTML = html; e.currentTarget.blur() }
+        if (e.key === 'Escape') {
+          editing.current = false
+          if (value?.trim()) { elRef.current.innerText = value }
+          else                { elRef.current.innerHTML = phHTML }
+          e.currentTarget.blur()
+        }
       }}
       style={{
         ...style,
         outline: 'none',
+        cursor: 'text',
         boxShadow: 'inset 0 0 0 1.5px rgba(240,138,42,0.55)',
-        borderRadius: 2, cursor: 'text',
-        ...(style.padding
-          ? {}
-          : { padding: '1px 3px', margin: '-1px -3px' }),
-        minWidth: 12, display: style.display ?? 'inline-block',
+        borderRadius: style.borderRadius ?? 2,
+        ...(style.padding ? {} : { padding: '1px 3px', margin: '-1px -3px' }),
+        minWidth: 12,
+        display: style.display ?? 'inline-block',
       }}
-      dangerouslySetInnerHTML={{ __html: html }}
     />
   )
 }
