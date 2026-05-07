@@ -53,12 +53,13 @@ function fill(arr, phs) {
 }
 
 /* ─── Édition inline ───────────────────────────────────────── */
-function EditText({ value, onSave, style = {}, tag: Tag = 'span', multiline = false }) {
+function EditText({ value, placeholder, onSave, style = {}, tag: Tag = 'span', multiline = false }) {
   if (!onSave) return <Tag style={style}>{value}</Tag>
   return (
     <Tag
       contentEditable
       suppressContentEditableWarning
+      data-placeholder={placeholder}
       onBlur={e => {
         const v = e.currentTarget.innerText.trim()
         if (v !== (value ?? '')) onSave(v)
@@ -108,12 +109,13 @@ function Block({ blockKey, layout, editMode, onUpdate, children }) {
 }
 
 /* ─── Bullet ───────────────────────────────────────────────── */
-function Bullet({ text, onSave, dotColor, textColor, bold = false, fontSize = 15, gap = 5 }) {
+function Bullet({ text, placeholder, onSave, dotColor, textColor, bold = false, fontSize = 15, gap = 5 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: gap }}>
       <span style={{ color: dotColor ?? C.orange, fontWeight: 700, flexShrink: 0, fontSize, lineHeight: '1.45', fontFamily: FONT_BODY }}>•</span>
       <EditText
         value={text}
+        placeholder={placeholder}
         onSave={onSave}
         multiline
         style={{ fontSize, color: textColor ?? C.navyBright, lineHeight: 1.45, fontWeight: bold ? 700 : 400, fontFamily: FONT_BODY, wordSpacing: 'normal', letterSpacing: 'normal', display: 'block', flex: 1 }}
@@ -158,30 +160,23 @@ export default function SlideTemplate({
   onLayoutChange = null,
   onTextChange = null,
 }) {
-  /* En mode texte, on affiche les vraies valeurs (pas les placeholders) */
-  const t   = titre?.trim()      || PH.titre
-  const st  = sous_titre?.trim() || PH.sous_titre
-  const ctx = textEditMode
-    ? [contexte[0] ?? '', contexte[1] ?? '', contexte[2] ?? '']
-    : fill(contexte, PH.contexte)
-  const tgs = textEditMode
-    ? [tags[0] ?? '', tags[1] ?? '', tags[2] ?? '', tags[3] ?? '']
-    : fill(tags, PH.tags)
-  const per = textEditMode
-    ? [perimetre[0] ?? '', perimetre[1] ?? '', perimetre[2] ?? '']
-    : fill(perimetre, PH.perimetre)
-  const enj = textEditMode
-    ? [enjeux[0] ?? '', enjeux[1] ?? '', enjeux[2] ?? '']
-    : fill(enjeux, PH.enjeux)
-  const imp = textEditMode
-    ? [impact[0] ?? '', impact[1] ?? '', impact[2] ?? '']
-    : fill(impact, PH.impact)
+  /* Valeurs réelles — jamais de placeholder en vue, placeholder CSS en édition */
+  const t   = titre?.trim()      || (textEditMode ? '' : PH.titre)
+  const st  = sous_titre?.trim() || ''
 
-  const mChiffres = [metrique_1_chiffre, metrique_2_chiffre, metrique_3_chiffre]
-  const mLabels   = [metrique_1_label,   metrique_2_label,   metrique_3_label  ]
+  const ctx = [0,1,2].map(i => contexte[i]?.trim() ?? '')
+  const tgs = [0,1,2,3].map(i => tags[i]?.trim() ?? '')
+  const per = [0,1,2].map(i => perimetre[i]?.trim() ?? '')
+  const enj = [0,1,2].map(i => enjeux[i]?.trim() ?? '')
+  const imp = [0,1,2].map(i => impact[i]?.trim() ?? '')
+
+  const mChiffres = [metrique_1_chiffre, metrique_2_chiffre, metrique_3_chiffre].map(v => v?.trim() ?? '')
+  const mLabels   = [metrique_1_label,   metrique_2_label,   metrique_3_label  ].map(v => v?.trim() ?? '')
   const metriques = PH.metriques.map((ph, i) => ({
-    chiffre: textEditMode ? (mChiffres[i] ?? '') : (mChiffres[i]?.trim() || ph.chiffre),
-    label:   textEditMode ? (mLabels[i]   ?? '') : (mLabels[i]?.trim()   || ph.label),
+    chiffre: mChiffres[i],
+    label:   mLabels[i],
+    phChiffre: ph.chiffre,
+    phLabel:   ph.label,
   }))
 
   /* Helpers pour onTextChange */
@@ -204,7 +199,7 @@ export default function SlideTemplate({
         <EditText
           value={titre?.trim() || PH.titre}
           onSave={chg('titre')}
-          style={{ color: C.blanc, fontSize: 38, fontWeight: 400, fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: '-0.5px', lineHeight: 1.2, flex: 1 }}
+          style={{ color: C.blanc, fontSize: 38, fontWeight: 400, fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: '-0.5px', lineHeight: 1.2, whiteSpace: 'nowrap' }}
           tag="span"
         />
         <span style={{ color: C.orange, fontWeight: 400, fontSize: 38, marginLeft: 4, flexShrink: 0, fontFamily: FONT_TITLE, lineHeight: 1.2 }}>.</span>
@@ -214,19 +209,21 @@ export default function SlideTemplate({
       <img src="/logos/footer.svg" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: 1280, height: 67, objectFit: 'fill', pointerEvents: 'none', zIndex: 1 }} />
 
       {/* Sous-titre */}
-      <Block blockKey="subtitle" {...bp}>
-        <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-          <EditText value={st} onSave={chg('sous_titre')}
-            style={{ color: C.navyBright, fontSize: 22, fontWeight: 700, fontFamily: FONT_TITLE, lineHeight: 1.1, wordSpacing: 'normal', letterSpacing: 'normal', width: '100%' }}
-            tag="div" />
-        </div>
-      </Block>
+      {(textEditMode || st) && (
+        <Block blockKey="subtitle" {...bp}>
+          <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+            <EditText value={st} placeholder={PH.sous_titre} onSave={chg('sous_titre')}
+              style={{ color: C.navyBright, fontSize: 22, fontWeight: 700, fontFamily: FONT_TITLE, lineHeight: 1.1, wordSpacing: 'normal', letterSpacing: 'normal', width: '100%' }}
+              tag="div" />
+          </div>
+        </Block>
+      )}
 
       {/* Contexte */}
       <Block blockKey="contexte" {...bp}>
         <div style={{ background: C.lavender, borderRadius: 6, padding: '12px 20px', height: '100%', boxSizing: 'border-box' }}>
-          {ctx.map((line, i) => (
-            <Bullet key={i} text={line} onSave={chg('contexte', i)}
+          {ctx.map((line, i) => (textEditMode || line) && (
+            <Bullet key={i} text={line} placeholder={PH.contexte[i]} onSave={chg('contexte', i)}
               dotColor={C.navyBright} textColor={C.navyBright} fontSize={15} gap={4} />
           ))}
         </div>
@@ -235,8 +232,8 @@ export default function SlideTemplate({
       {/* Tags */}
       <Block blockKey="tags" {...bp}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', height: '100%' }}>
-          {tgs.map((tag, i) => (
-            <EditText key={i} value={tag} onSave={chg('tags', i)}
+          {tgs.map((tag, i) => (textEditMode || tag) && (
+            <EditText key={i} value={tag} placeholder={PH.tags[i]} onSave={chg('tags', i)}
               style={{ background: C.lavender, borderRadius: 4, padding: '7px 18px', fontSize: 15, color: C.navyBright, fontWeight: 600, fontFamily: FONT_BODY, wordSpacing: 'normal', letterSpacing: 'normal', flexShrink: 0 }}
               tag="div" />
           ))}
@@ -246,8 +243,8 @@ export default function SlideTemplate({
       {/* Périmètre */}
       <Block blockKey="perimetre" {...bp}>
         <BoxedSection label="Périmètre">
-          {per.map((line, i) => (
-            <Bullet key={i} text={line} onSave={chg('perimetre', i)}
+          {per.map((line, i) => (textEditMode || line) && (
+            <Bullet key={i} text={line} placeholder={PH.perimetre[i]} onSave={chg('perimetre', i)}
               dotColor={C.orange} textColor={C.navyBright} bold fontSize={15} gap={5} />
           ))}
         </BoxedSection>
@@ -256,8 +253,8 @@ export default function SlideTemplate({
       {/* Enjeux */}
       <Block blockKey="enjeux" {...bp}>
         <BoxedSection label="Les enjeux clés">
-          {enj.map((line, i) => (
-            <Bullet key={i} text={line} onSave={chg('enjeux', i)}
+          {enj.map((line, i) => (textEditMode || line) && (
+            <Bullet key={i} text={line} placeholder={PH.enjeux[i]} onSave={chg('enjeux', i)}
               dotColor={C.orange} textColor={C.navyBright} fontSize={15} gap={9} />
           ))}
         </BoxedSection>
@@ -279,24 +276,25 @@ export default function SlideTemplate({
       {/* Notre impact */}
       <Block blockKey="impact" {...bp}>
         <BoxedSection label="Notre impact" tabCentered tabGradient>
-          {imp.map((line, i) => (
-            <Bullet key={i} text={line} onSave={chg('impact', i)}
+          {imp.map((line, i) => (textEditMode || line) && (
+            <Bullet key={i} text={line} placeholder={PH.impact[i]} onSave={chg('impact', i)}
               bold dotColor={C.orange} textColor={C.navyBright} fontSize={14} gap={7} />
           ))}
         </BoxedSection>
       </Block>
 
-      {/* Métriques */}
+      {/* Métriques — carte visible si chiffre rempli, ou toujours en édition */}
       <Block blockKey="metriques" {...bp}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%', boxSizing: 'border-box' }}>
           {metriques.map((m, i) => {
-            const chiffreField = `metrique_${i + 1}_chiffre`
-            const labelField   = `metrique_${i + 1}_label`
+            if (!textEditMode && !m.chiffre && !m.label) return null
+            const cf = `metrique_${i + 1}_chiffre`
+            const lf = `metrique_${i + 1}_label`
             return (
               <div key={i} style={{ background: C.cream2, borderRadius: 5, padding: '7px 14px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <EditText value={m.chiffre} onSave={chg(chiffreField)}
+                <EditText value={m.chiffre} placeholder={m.phChiffre} onSave={chg(cf)}
                   style={{ color: C.orange, fontWeight: 700, fontSize: 26, fontStyle: 'italic', fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: 'normal' }} />
-                <EditText value={m.label} onSave={chg(labelField)}
+                <EditText value={m.label} placeholder={m.phLabel} onSave={chg(lf)}
                   style={{ fontStyle: 'italic', color: C.lblGray, fontWeight: 500, fontSize: 15, fontFamily: FONT_BODY, wordSpacing: 'normal', letterSpacing: 'normal' }} />
               </div>
             )
