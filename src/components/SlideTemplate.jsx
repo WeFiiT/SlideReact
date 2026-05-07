@@ -3,45 +3,42 @@ import { Rnd } from 'react-rnd'
 const FONT_TITLE = "'Publica Play', Arial, sans-serif"
 const FONT_BODY  = "'Geomanist', Arial, sans-serif"
 
+/* Palette exacte du design file */
 const C = {
-  bleu:      '#002882',
-  orange:    '#F98F03',
-  blanc:     '#FFFFFF',
-  grisClair: '#F0F4FF',
-  grisNeutre:'#E7E6E6',
-  texte:     '#334155',
+  navy:       '#112d80',   // badges
+  navyBright: '#1f3fa3',   // texte, liens
+  orange:     '#f08a2a',   // dots, accents
+  lavender:   '#eef0fb',   // fond cartes, pills
+  cream2:     '#fdf6ec',   // fond métriques
+  line:       '#c9cfe6',   // bordures
+  lblGray:    '#9aa0b8',   // label métrique
+  blanc:      '#ffffff',
 }
 
-const txt = (overrides = {}) => ({
-  fontFamily: FONT_BODY,
-  textAlign: 'left',
-  wordSpacing: 'normal',
-  letterSpacing: 'normal',
-  fontKerning: 'none',
-  ...overrides,
-})
+/* Dimensions fixes du design file */
+const PAD_X   = 50
+const RIGHT_W = 280
+const GAP_COL = 28
+const LEFT_W  = 1280 - 2 * PAD_X - GAP_COL - RIGHT_W  // 872px
+const RIGHT_X = PAD_X + LEFT_W + GAP_COL               // 950px
+const MAIN_TOP = 168
+const MAIN_BOTTOM_Y = 670  // 720 - 50px bottom padding
 
-/* Layout par défaut — calqué sur le PDF référence */
 export const DEFAULT_LAYOUT = {
-  subtitle:  { x: 28,  y: 84,  w: 1224, h: 26  },
-  contexte:  { x: 28,  y: 114, w: 784,  h: 72  },
-  tags:      { x: 28,  y: 194, w: 784,  h: 30  },
-  perimetre: { x: 28,  y: 232, w: 784,  h: 118 },
-  enjeux:    { x: 28,  y: 358, w: 784,  h: 277 },
-  logo:      { x: 830, y: 114, w: 422,  h: 70  },
-  impact:    { x: 830, y: 192, w: 422,  h: 220 },
-  metriques: { x: 830, y: 420, w: 422,  h: 115 },
+  subtitle:  { x: PAD_X,   y: 110,      w: 1180,   h: 46  },
+  contexte:  { x: PAD_X,   y: MAIN_TOP, w: LEFT_W, h: 80  },
+  tags:      { x: PAD_X,   y: 262,      w: LEFT_W, h: 38  },
+  perimetre: { x: PAD_X,   y: 314,      w: LEFT_W, h: 110 },
+  enjeux:    { x: PAD_X,   y: 438,      w: LEFT_W, h: 232 },
+  logo:      { x: RIGHT_X, y: MAIN_TOP, w: RIGHT_W, h: 60 },
+  impact:    { x: RIGHT_X, y: 236,      w: RIGHT_W, h: 295},
+  metriques: { x: RIGHT_X, y: 539,      w: RIGHT_W, h: 131},
 }
 
 const BLOCK_LABELS = {
-  subtitle:  'Sous-titre',
-  contexte:  'Contexte',
-  tags:      'Tags',
-  perimetre: 'Périmètre',
-  enjeux:    'Enjeux clés',
-  logo:      'Logo',
-  impact:    'Notre impact',
-  metriques: 'Métriques',
+  subtitle: 'Sous-titre', contexte: 'Contexte', tags: 'Tags',
+  perimetre: 'Périmètre', enjeux: 'Enjeux clés',
+  logo: 'Logo', impact: 'Notre impact', metriques: 'Métriques',
 }
 
 const PH = {
@@ -79,32 +76,8 @@ function fill(arr, phs) {
   return phs.map((ph, i) => (arr?.[i]?.trim() ? arr[i] : ph))
 }
 
-function Badge({ children }) {
-  return (
-    <div style={{
-      display: 'inline-block',
-      background: C.bleu, color: C.blanc,
-      borderRadius: 20, padding: '4px 16px',
-      fontSize: 13, fontWeight: 400,
-      marginBottom: 7, fontFamily: FONT_TITLE,
-      wordSpacing: 'normal', letterSpacing: 'normal',
-    }}>{children}</div>
-  )
-}
-
-function Bullet({ text, dotColor, textColor, bold = false }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 5 }}>
-      <span style={{ color: dotColor || C.orange, fontWeight: 700, flexShrink: 0, fontSize: 15, lineHeight: '18px', fontFamily: FONT_BODY }}>•</span>
-      <span style={txt({ fontSize: 13, color: textColor || C.texte, lineHeight: 1.4, fontWeight: bold ? 700 : 400 })}>{text}</span>
-    </div>
-  )
-}
-
-/* Wrapper bloc — absolu en vue, Rnd en édition */
 function Block({ blockKey, layout, editMode, onUpdate, children }) {
   const b = layout[blockKey]
-
   if (editMode) {
     return (
       <Rnd
@@ -113,48 +86,67 @@ function Block({ blockKey, layout, editMode, onUpdate, children }) {
         bounds="parent"
         onDragStop={(e, d) => onUpdate(blockKey, { x: d.x, y: d.y })}
         onResizeStop={(e, dir, ref, delta, pos) => onUpdate(blockKey, {
-          w: parseInt(ref.style.width),
-          h: parseInt(ref.style.height),
+          w: parseInt(ref.style.width), h: parseInt(ref.style.height),
           x: pos.x, y: pos.y,
         })}
         style={{ zIndex: 10 }}
       >
-        <div style={{
-          width: '100%', height: '100%',
-          border: '2px dashed #F98F03',
-          borderRadius: 4,
-          boxSizing: 'border-box',
-          overflow: 'hidden',
-          position: 'relative',
-          cursor: 'move',
-        }}>
-          {/* Label du bloc */}
-          <div style={{
-            position: 'absolute', top: 0, left: 0,
-            background: '#F98F03', color: '#fff',
-            fontSize: 10, fontWeight: 700,
-            padding: '1px 6px', borderRadius: '0 0 4px 0',
-            fontFamily: 'Arial, sans-serif',
-            zIndex: 20, userSelect: 'none',
-            lineHeight: '16px',
-          }}>{BLOCK_LABELS[blockKey]}</div>
-          <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
-            {children}
+        <div style={{ width: '100%', height: '100%', border: '2px dashed #f08a2a', borderRadius: 4, boxSizing: 'border-box', overflow: 'visible', position: 'relative', cursor: 'move' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, background: '#f08a2a', color: '#fff', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: '0 0 4px 0', fontFamily: 'Arial', zIndex: 20, userSelect: 'none', lineHeight: '16px' }}>
+            {BLOCK_LABELS[blockKey]}
           </div>
+          <div style={{ width: '100%', height: '100%', overflow: 'visible' }}>{children}</div>
         </div>
       </Rnd>
     )
   }
+  return (
+    <div style={{ position: 'absolute', left: b.x, top: b.y, width: b.w, height: b.h, overflow: 'visible', boxSizing: 'border-box' }}>
+      {children}
+    </div>
+  )
+}
+
+/* Bullet générique */
+function Bullet({ text, bold = false, dotColor, textColor, fontSize = 16, gap = 5 }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: gap }}>
+      <span style={{ color: dotColor || C.orange, fontWeight: 700, flexShrink: 0, fontSize, lineHeight: '1.45', fontFamily: FONT_BODY }}>•</span>
+      <span style={{ fontSize, color: textColor || C.navyBright, lineHeight: 1.45, fontWeight: bold ? 700 : 400, fontFamily: FONT_BODY, wordSpacing: 'normal', letterSpacing: 'normal' }}>{text}</span>
+    </div>
+  )
+}
+
+/* Section avec bordure + tab flottant (Périmètre / Enjeux / Impact) */
+function BoxedSection({ label, tabCentered = false, tabGradient = false, children }) {
+  const tabStyle = tabCentered ? {
+    position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
+    background: tabGradient ? 'linear-gradient(180deg,#f9a14a 0%,#ee6f12 100%)' : C.navy,
+    color: C.blanc, borderRadius: 20, padding: '8px 38px',
+    fontSize: 16, fontWeight: 700, fontFamily: FONT_TITLE,
+    boxShadow: '0 2px 0 rgba(0,0,0,0.04)', whiteSpace: 'nowrap',
+    wordSpacing: 'normal', letterSpacing: 'normal',
+  } : {
+    position: 'absolute', top: -14, left: 18,
+    background: C.navy, color: C.blanc,
+    borderRadius: 6, padding: '5px 20px',
+    fontSize: 16, fontWeight: 700, fontFamily: FONT_TITLE,
+    wordSpacing: 'normal', letterSpacing: 'normal',
+  }
 
   return (
-    <div style={{
-      position: 'absolute',
-      left: b.x, top: b.y,
-      width: b.w, height: b.h,
-      overflow: 'hidden',
-      boxSizing: 'border-box',
-    }}>
-      {children}
+    <div style={{ position: 'relative', marginTop: 10, height: 'calc(100% - 10px)', boxSizing: 'border-box' }}>
+      <div style={tabStyle}>{label}</div>
+      <div style={{
+        border: `1.5px solid ${C.line}`,
+        borderRadius: 8,
+        padding: tabCentered ? '26px 18px 16px' : '14px 22px 14px',
+        height: '100%',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+      }}>
+        {children}
+      </div>
     </div>
   )
 }
@@ -186,97 +178,83 @@ export default function SlideTemplate({
   const onUpdate = (key, changes) => {
     if (onLayoutChange) onLayoutChange({ ...layout, [key]: { ...layout[key], ...changes } })
   }
-
-  const blockProps = { layout, editMode, onUpdate }
+  const bp = { layout, editMode, onUpdate }
 
   return (
-    <div style={{
-      width: 1280, height: 720,
-      background: C.blanc,
-      fontFamily: FONT_BODY,
-      overflow: 'hidden',
-      position: 'relative',
-      textAlign: 'left',
-      wordSpacing: 'normal',
-      letterSpacing: 'normal',
-    }}>
+    <div style={{ width: 1280, height: 720, background: C.blanc, fontFamily: FONT_BODY, overflow: 'hidden', position: 'relative', textAlign: 'left', wordSpacing: 'normal', letterSpacing: 'normal' }}>
+
       {/* Header SVG WeFiiT */}
-      <img src="/logos/header.svg" alt="" style={{ position: 'absolute', top: 0, left: 0, width: 1280, height: 74, objectFit: 'fill', pointerEvents: 'none', zIndex: 1 }} />
-      <div style={{ position: 'absolute', top: 0, left: 0, width: 1280, height: 74, display: 'flex', alignItems: 'center', padding: '0 32px', justifyContent: 'space-between', zIndex: 2, boxSizing: 'border-box' }}>
-        <span style={{ color: C.blanc, fontSize: 27, fontWeight: 400, flex: 1, fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: 'normal' }}>{t}</span>
-        <span style={{ color: C.orange, fontWeight: 400, fontSize: 24, marginLeft: 20, flexShrink: 0, fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: 'normal' }}>point.</span>
+      <img src="/logos/header.svg" alt="" style={{ position: 'absolute', top: 0, left: 0, width: 1280, height: 100, objectFit: 'fill', pointerEvents: 'none', zIndex: 1 }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, width: 1280, height: 100, display: 'flex', alignItems: 'center', padding: `0 ${PAD_X}px`, justifyContent: 'space-between', zIndex: 2, boxSizing: 'border-box' }}>
+        <span style={{ color: C.blanc, fontSize: 38, fontWeight: 400, flex: 1, fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: '-0.5px', lineHeight: 1 }}>{t}</span>
+        <span style={{ color: C.orange, fontWeight: 400, fontSize: 38, marginLeft: 4, flexShrink: 0, fontFamily: FONT_TITLE }}>.</span>
       </div>
 
       {/* Footer SVG WeFiiT */}
       <img src="/logos/footer.svg" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: 1280, height: 67, objectFit: 'fill', pointerEvents: 'none', zIndex: 1 }} />
 
-      {/* ── Bloc : Sous-titre ── */}
-      <Block blockKey="subtitle" {...blockProps}>
-        <div style={txt({ color: C.bleu, fontSize: 14, fontWeight: 400, fontFamily: FONT_TITLE, paddingTop: 4 })}>{st}</div>
+      {/* ── Sous-titre ── */}
+      <Block blockKey="subtitle" {...bp}>
+        <div style={{ color: C.navyBright, fontSize: 22, fontWeight: 700, fontFamily: FONT_TITLE, lineHeight: 1.1, wordSpacing: 'normal', letterSpacing: 'normal' }}>{st}</div>
       </Block>
 
-      {/* ── Bloc : Contexte ── */}
-      <Block blockKey="contexte" {...blockProps}>
-        <div style={{ background: C.grisClair, borderRadius: 8, padding: '8px 14px', height: '100%', boxSizing: 'border-box' }}>
-          {ctx.map((line, i) => <Bullet key={i} text={line} />)}
+      {/* ── Contexte ── */}
+      <Block blockKey="contexte" {...bp}>
+        <div style={{ background: C.lavender, borderRadius: 6, padding: '12px 20px', height: '100%', boxSizing: 'border-box' }}>
+          {ctx.map((line, i) => <Bullet key={i} text={line} dotColor={C.navyBright} textColor={C.navyBright} fontSize={15} gap={4} />)}
         </div>
       </Block>
 
-      {/* ── Bloc : Tags ── */}
-      <Block blockKey="tags" {...blockProps}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: '100%' }}>
+      {/* ── Tags / Pills ── */}
+      <Block blockKey="tags" {...bp}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', height: '100%' }}>
           {tgs.map((tag, i) => (
-            <span key={i} style={txt({ border: `1px solid ${C.grisNeutre}`, background: C.blanc, color: C.texte, borderRadius: 4, padding: '3px 14px', fontSize: 12 })}>{tag}</span>
+            <div key={i} style={{ background: C.lavender, borderRadius: 4, padding: '7px 18px', fontSize: 15, color: C.navyBright, fontWeight: 600, fontFamily: FONT_BODY, wordSpacing: 'normal', letterSpacing: 'normal', flexShrink: 0 }}>{tag}</div>
           ))}
         </div>
       </Block>
 
-      {/* ── Bloc : Périmètre ── */}
-      <Block blockKey="perimetre" {...blockProps}>
-        <div style={{ height: '100%', boxSizing: 'border-box' }}>
-          <Badge>Périmètre</Badge>
-          <div style={{ background: C.grisClair, borderRadius: 8, padding: '7px 14px' }}>
-            {per.map((line, i) => <Bullet key={i} text={line} dotColor={C.orange} textColor={C.bleu} bold />)}
-          </div>
-        </div>
+      {/* ── Périmètre ── border + tab flottant à gauche */}
+      <Block blockKey="perimetre" {...bp}>
+        <BoxedSection label="Périmètre">
+          {per.map((line, i) => <Bullet key={i} text={line} bold dotColor={C.orange} textColor={C.navyBright} fontSize={15} gap={5} />)}
+        </BoxedSection>
       </Block>
 
-      {/* ── Bloc : Enjeux ── */}
-      <Block blockKey="enjeux" {...blockProps}>
-        <div style={{ height: '100%', boxSizing: 'border-box' }}>
-          <Badge>Les enjeux clés</Badge>
-          {enj.map((line, i) => <Bullet key={i} text={line} dotColor={C.orange} textColor={C.texte} />)}
-        </div>
+      {/* ── Enjeux ── border + tab flottant à gauche, poids normal */}
+      <Block blockKey="enjeux" {...bp}>
+        <BoxedSection label="Les enjeux clés">
+          {enj.map((line, i) => <Bullet key={i} text={line} dotColor={C.orange} textColor={C.navyBright} fontSize={15} gap={9} />)}
+        </BoxedSection>
       </Block>
 
-      {/* ── Bloc : Logo ── */}
-      <Block blockKey="logo" {...blockProps}>
+      {/* ── Logo ── */}
+      <Block blockKey="logo" {...bp}>
         {logo_url ? (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.grisClair, borderRadius: 10 }}>
-            <img src={logo_url} alt="logo client" style={{ maxHeight: '90%', maxWidth: '90%', objectFit: 'contain' }} />
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src={logo_url} alt="logo client" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
           </div>
         ) : (
-          <div style={{ width: '100%', height: '100%', background: C.grisClair, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={txt({ color: '#94a3b8', fontSize: 12, fontStyle: 'italic', textAlign: 'center', lineHeight: 1.5 })}>Remplacer par<br />logo client</span>
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'repeating-linear-gradient(45deg,#f6f6f6 0 8px,#ececec 8px 16px)', borderRadius: 4 }}>
+            <span style={{ color: '#888', fontSize: 12, fontFamily: 'monospace', letterSpacing: '0.5px' }}>CLIENT LOGO</span>
           </div>
         )}
       </Block>
 
-      {/* ── Bloc : Notre impact ── */}
-      <Block blockKey="impact" {...blockProps}>
-        <div style={{ background: C.grisClair, borderRadius: 10, padding: '10px 12px', height: '100%', boxSizing: 'border-box' }}>
-          <div style={{ background: C.orange, color: C.blanc, borderRadius: 30, padding: '8px 14px', fontSize: 15, fontWeight: 400, marginBottom: 10, textAlign: 'center', fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: 'normal' }}>Notre impact</div>
-          {imp.map((line, i) => <Bullet key={i} text={line} dotColor={C.orange} textColor={C.bleu} />)}
-        </div>
+      {/* ── Notre impact ── border + tab centré gradient orange */}
+      <Block blockKey="impact" {...bp}>
+        <BoxedSection label="Notre impact" tabCentered tabGradient>
+          {imp.map((line, i) => <Bullet key={i} text={line} bold dotColor={C.orange} textColor={C.navyBright} fontSize={14} gap={7} />)}
+        </BoxedSection>
       </Block>
 
-      {/* ── Bloc : Métriques ── */}
-      <Block blockKey="metriques" {...blockProps}>
+      {/* ── Métriques ── */}
+      <Block blockKey="metriques" {...bp}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%', boxSizing: 'border-box' }}>
           {metriques.map((m, i) => (
-            <div key={i} style={{ background: '#FFF4E0', borderRadius: 8, padding: '7px 16px', display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-              <span style={{ color: C.orange, fontWeight: 400, fontSize: 22, fontFamily: FONT_TITLE, flexShrink: 0, wordSpacing: 'normal', letterSpacing: 'normal' }}>{m.chiffre}</span>
-              <span style={txt({ color: C.orange, fontSize: 13 })}>{m.label}</span>
+            <div key={i} style={{ background: C.cream2, borderRadius: 5, padding: '7px 14px', textAlign: 'center', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <span style={{ color: C.orange, fontWeight: 700, fontSize: 26, fontStyle: 'italic', fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: 'normal' }}>{m.chiffre}</span>
+              <span style={{ fontStyle: 'italic', color: C.lblGray, fontWeight: 500, fontSize: 15, fontFamily: FONT_BODY, wordSpacing: 'normal', letterSpacing: 'normal' }}>{m.label}</span>
             </div>
           ))}
         </div>
