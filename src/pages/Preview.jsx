@@ -125,9 +125,30 @@ export default function Preview() {
     setExporting(true)
     try {
       await document.fonts.ready
-      const canvas = await html2canvas(slideRef.current, { scale: 2, useCORS: true, width: 1280, height: 720 })
+
+      /* Cloner la slide dans un conteneur hors-viewport, sans transform parent */
+      const wrapper = document.createElement('div')
+      Object.assign(wrapper.style, {
+        position: 'fixed', top: '0', left: '-9999px',
+        width: '1280px', height: '720px',
+        overflow: 'visible', zIndex: '-1', transform: 'none',
+      })
+      wrapper.appendChild(slideRef.current.cloneNode(true))
+      document.body.appendChild(wrapper)
+
+      const canvas = await html2canvas(wrapper, {
+        scale: 2, useCORS: true,
+        width: 1280, height: 720,
+        scrollX: 0, scrollY: 0,
+      })
+      document.body.removeChild(wrapper)
+
+      /* Nom de fichier = titre de la carte (localStorage) ou titre slide */
+      const meta = (() => { try { return JSON.parse(localStorage.getItem(`slide_consultant_${id}`) || 'null') } catch { return null } })()
+      const filename = (meta?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
+
       const link = document.createElement('a')
-      link.download = `${slide?.titre || 'slide'}.png`
+      link.download = `${filename}.png`
       link.href = canvas.toDataURL('image/png')
       link.click()
     } finally { setExporting(false) }

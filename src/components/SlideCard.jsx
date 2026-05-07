@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
+import { TYPE_COLORS, computeStatus, STATUS_STYLES } from '../constants'
 
 export default function SlideCard({ slide, onDeleted }) {
   const navigate = useNavigate()
   const thumbRef = useRef(null)
   const [thumbScale, setThumbScale] = useState(0.25)
   const [consultant, setConsultant] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     try {
@@ -28,10 +31,10 @@ export default function SlideCard({ slide, onDeleted }) {
   }, [])
 
   const handleDelete = async () => {
-    if (!confirm(`Supprimer « ${slide.titre} » ?`)) return
+    setDeleting(true)
     const { error } = await supabase.from('slides').delete().eq('id', slide.id)
-    if (!error) onDeleted(slide.id)
-    else alert('Erreur lors de la suppression.')
+    if (!error) { onDeleted(slide.id) }
+    else { setDeleting(false); setConfirmDelete(false); alert('Erreur lors de la suppression.') }
   }
 
   const dateStr = new Date(slide.created_at).toLocaleDateString('fr-FR', {
@@ -65,16 +68,31 @@ export default function SlideCard({ slide, onDeleted }) {
 
       {/* Infos */}
       <div style={{ padding: '14px 16px 10px', flex: 1 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: '#002882', lineHeight: 1.3, marginBottom: 4 }}>
-          {consultant?.card_titre || slide.titre || '(sans titre)'}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#002882', lineHeight: 1.3 }}>
+            {consultant?.card_titre || slide.titre || '(sans titre)'}
+          </div>
+          {(() => { const s = STATUS_STYLES[computeStatus(slide)]; return (
+            <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: s.color, background: s.bg, borderRadius: 20, padding: '2px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, display: 'inline-block' }} />
+              {s.label}
+            </span>
+          )})()}
         </div>
         {slide.sous_titre && (
           <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', marginBottom: 8, lineHeight: 1.4 }}>
             {slide.sous_titre}
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-          <span style={{ fontSize: 11, color: '#94a3b8' }}>{dateStr}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>{dateStr}</span>
+            {slide.type_mission && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: TYPE_COLORS[slide.type_mission] || '#475569', background: (TYPE_COLORS[slide.type_mission] || '#475569') + '18', borderRadius: 20, padding: '2px 9px' }}>
+                {slide.type_mission}
+              </span>
+            )}
+          </div>
           {consultant && (
             <span style={{ fontSize: 12, fontWeight: 600, color: '#475569', background: '#f1f5f9', borderRadius: 20, padding: '2px 10px' }}>
               {consultant.prenom} {consultant.nom}
@@ -91,10 +109,42 @@ export default function SlideCard({ slide, onDeleted }) {
         <button onClick={() => navigate(`/preview/${slide.id}?export=1`)} style={btn('#f08a2a')}>
           Exporter
         </button>
-        <button onClick={handleDelete} style={{ ...btn('#dc2626'), marginLeft: 'auto', padding: '7px 12px' }} title="Supprimer">
+        <button onClick={() => setConfirmDelete(true)} style={{ ...btn('#dc2626'), marginLeft: 'auto', padding: '7px 12px' }} title="Supprimer">
           ✕
         </button>
       </div>
+
+      {/* Modale de confirmation */}
+      {confirmDelete && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+          onClick={(e) => { if (e.target === e.currentTarget && !deleting) setConfirmDelete(false) }}
+        >
+          <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 380, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: 20, marginBottom: 10 }}>🗑️</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 6 }}>Supprimer cette slide ?</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.5 }}>
+              « {consultant?.card_titre || slide.titre || 'Sans titre'} » sera supprimée définitivement.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{ flex: 1, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
+              >
+                {deleting ? 'Suppression…' : 'Supprimer'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

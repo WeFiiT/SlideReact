@@ -197,7 +197,8 @@ export default function SlideTemplate({
       <img src="/logos/header.svg" alt="" style={{ position: 'absolute', top: 0, left: 0, width: 1280, height: 100, objectFit: 'fill', pointerEvents: 'none', zIndex: 1 }} />
       <div style={{ position: 'absolute', top: 0, left: 0, width: 1280, height: 100, display: 'flex', alignItems: 'center', padding: `0 ${PAD_X}px`, justifyContent: 'flex-start', zIndex: 2, boxSizing: 'border-box' }}>
         <EditText
-          value={titre?.trim() || PH.titre}
+          value={titre?.trim() || ''}
+          placeholder={PH.titre}
           onSave={chg('titre')}
           style={{ color: C.blanc, fontSize: 38, fontWeight: 400, fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: '-0.5px', lineHeight: 1.2, whiteSpace: 'nowrap' }}
           tag="span"
@@ -267,8 +268,9 @@ export default function SlideTemplate({
             <img src={logo_url} alt="logo client" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
           </div>
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'repeating-linear-gradient(45deg,#f6f6f6 0 8px,#ececec 8px 16px)', borderRadius: 4 }}>
-            <span style={{ color: '#888', fontSize: 12, fontFamily: 'monospace' }}>CLIENT LOGO</span>
+          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'repeating-linear-gradient(45deg,#f6f6f6 0 8px,#ececec 8px 16px)', borderRadius: 4 }}>
+            <span style={{ color: '#aaa', fontSize: 12, fontFamily: 'monospace' }}>CLIENT LOGO</span>
+            <span style={{ color: '#b0b8cc', fontSize: 10, fontStyle: 'italic', fontFamily: FONT_BODY }}>(ajouter depuis le formulaire)</span>
           </div>
         )}
       </Block>

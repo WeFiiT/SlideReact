@@ -55,3 +55,9 @@ body {
   pointer-events: none;
   display: block;
 }
+
+/* Placeholder titre header (fond bleu foncé) */
+span[contenteditable][data-placeholder]:empty::before {
+  color: rgba(255,255,255,0.45);
+  display: inline;
+}
