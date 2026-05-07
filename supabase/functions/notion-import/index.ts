@@ -21,6 +21,51 @@ function getProp(page: any, name: string): string {
   }
 }
 
+async function uploadLogoFromNotion(
+  page: any,
+  sbHeaders: Record<string, string>,
+): Promise<string | null> {
+  // Cherche la propriété logo (insensible à la casse)
+  const p = Object.values(page.properties).find(
+    (v: any) => v.type === 'files' && (
+      Object.keys(page.properties).find(k => page.properties[k] === v)
+        ?.toLowerCase().includes('logo')
+    )
+  ) as any
+  if (!p?.files?.length) return null
+
+  const file = p.files[0]
+  const fileUrl = file.type === 'file' ? file.file?.url : file.external?.url
+  const fileName: string = file.name || 'logo.png'
+  if (!fileUrl) return null
+
+  // Télécharger depuis Notion (URL signée, expire rapidement)
+  const dlRes = await fetch(fileUrl)
+  if (!dlRes.ok) return null
+
+  const blob = await dlRes.blob()
+  const ext = fileName.split('.').pop()?.toLowerCase() || 'png'
+  const path = `logo_notion_${Date.now()}.${ext}`
+
+  // Uploader dans Supabase Storage bucket "logos"
+  const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/logos/${path}`, {
+    method: 'POST',
+    headers: {
+      'apikey': sbHeaders['apikey'],
+      'Authorization': sbHeaders['Authorization'],
+      'Content-Type': blob.type || 'image/png',
+      'x-upsert': 'true',
+    },
+    body: blob,
+  })
+  if (!uploadRes.ok) {
+    console.error('Logo upload failed:', await uploadRes.text())
+    return null
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/logos/${path}`
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
@@ -47,6 +92,15 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify(page), { status: 500, headers: corsHeaders })
   }
 
+  const sbHeaders = {
+    'apikey': SUPABASE_SERVICE_KEY,
+    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+    'Content-Type': 'application/json',
+  }
+
+  // Upload du logo depuis Notion → Supabase Storage
+  const logoUrl = await uploadLogoFromNotion(page, sbHeaders)
+
   // Mapper les propriétés Notion → champs slide
   const slide = {
     notion_page_id:     pageId,
@@ -61,19 +115,13 @@ Deno.serve(async (req) => {
     perimetre:          [1, 2, 3].map(n => getProp(page, `Périmètre ${n}`)),
     enjeux:             [1, 2, 3].map(n => getProp(page, `Enjeux ${n}`)),
     impact:             [1, 2, 3].map(n => getProp(page, `Impact ${n}`)),
-    logo_url:           getProp(page, 'Logo URL') || null,
+    logo_url:           logoUrl || getProp(page, 'Logo URL') || null,
     metrique_1_chiffre: getProp(page, 'Métrique 1 - Chiffre') || null,
     metrique_1_label:   getProp(page, 'Métrique 1 - Label') || null,
     metrique_2_chiffre: getProp(page, 'Métrique 2 - Chiffre') || null,
     metrique_2_label:   getProp(page, 'Métrique 2 - Label') || null,
     metrique_3_chiffre: getProp(page, 'Métrique 3 - Chiffre') || null,
     metrique_3_label:   getProp(page, 'Métrique 3 - Label') || null,
-  }
-
-  const sbHeaders = {
-    'apikey': SUPABASE_SERVICE_KEY,
-    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-    'Content-Type': 'application/json',
   }
 
   // Chercher si un slide existe déjà avec ce notion_page_id
