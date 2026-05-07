@@ -245,7 +245,7 @@ export default function SlideTemplate({
         <BoxedSection label="Périmètre">
           {per.map((line, i) => (textEditMode || line) && (
             <Bullet key={i} text={line} placeholder={PH.perimetre[i]} onSave={chg('perimetre', i)}
-              dotColor={C.orange} textColor={C.navyBright} bold fontSize={15} gap={5} />
+              dotColor={C.orange} textColor={C.navyBright} fontSize={15} gap={5} />
           ))}
         </BoxedSection>
       </Block>
