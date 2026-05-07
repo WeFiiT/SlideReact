@@ -12,37 +12,30 @@ function loadLayout(id) {
     return s ? JSON.parse(s) : DEFAULT_LAYOUT
   } catch { return DEFAULT_LAYOUT }
 }
-function saveLayout(id, layout) {
-  localStorage.setItem(`slide_layout_${id}`, JSON.stringify(layout))
-}
 
 export default function Preview() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const autoExportParam = searchParams.get('export') === '1'
-  const editParam      = searchParams.get('edit')   === '1'
-  const autoExportDone = useRef(false)
-  const slideRef = useRef(null)
-  const saveTimer = useRef(null)
+  const editParam       = searchParams.get('edit')   === '1'
+  const autoExportDone  = useRef(false)
+  const slideRef        = useRef(null)
+  const saveTimer       = useRef(null)
 
-  const [slide, setSlide] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [exporting, setExporting] = useState(false)
-  const [scale, setScale] = useState(1)
-
-  /* Modes */
-  const [editMode, setEditMode] = useState(false)       // drag/resize
-  const [textEditMode, setTextEditMode] = useState(false) // édition texte inline
-
-  const [layout, setLayout] = useState(DEFAULT_LAYOUT)
-  const [saving, setSaving] = useState(false)
+  const [slide, setSlide]               = useState(null)
+  const [loading, setLoading]           = useState(true)
+  const [exporting, setExporting]       = useState(false)
+  const [scale, setScale]               = useState(1)
+  const [textEditMode, setTextEditMode] = useState(false)
+  const [layout]                        = useState(() => loadLayout(id))
+  const [saving, setSaving]             = useState(false)
 
   useEffect(() => {
     supabase.from('slides').select('*').eq('id', id).single()
       .then(({ data, error }) => {
         if (error) console.error(error)
-        else { setSlide(data); setLayout(loadLayout(id)) }
+        else setSlide(data)
         setLoading(false)
       })
   }, [id])
@@ -57,14 +50,12 @@ export default function Preview() {
     return () => window.removeEventListener('resize', upd)
   }, [])
 
-  /* Auto-export si URL contient ?export=1 (depuis la bibliothèque) */
   useEffect(() => {
     if (!autoExportParam || loading || !slide || autoExportDone.current) return
     autoExportDone.current = true
     exportPNG()
   }, [autoExportParam, loading, slide])
 
-  /* Active le mode édition texte si ?edit=1 */
   useEffect(() => {
     if (editParam && slide && !loading) setTextEditMode(true)
   }, [editParam, slide, loading])
@@ -94,7 +85,6 @@ export default function Preview() {
     }, 800)
   }
 
-  /* Mise à jour d'un champ texte depuis la slide */
   const handleTextChange = (field, idx, value) => {
     setSlide(prev => {
       let updated
@@ -110,23 +100,12 @@ export default function Preview() {
     })
   }
 
-  const handleLock = () => { saveLayout(id, layout); setEditMode(false) }
-  const handleReset = () => { setLayout(DEFAULT_LAYOUT); saveLayout(id, DEFAULT_LAYOUT) }
-
-  const [copied, setCopied] = useState(false)
-  const handleCopyLayout = () => {
-    navigator.clipboard.writeText(JSON.stringify(layout, null, 2))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   const exportPNG = async () => {
     if (!slideRef.current) return
     setExporting(true)
     try {
       await document.fonts.ready
 
-      /* Cloner la slide dans un conteneur hors-viewport, sans transform parent */
       const wrapper = document.createElement('div')
       Object.assign(wrapper.style, {
         position: 'fixed', top: '0', left: '-9999px',
@@ -143,7 +122,6 @@ export default function Preview() {
       })
       document.body.removeChild(wrapper)
 
-      /* Nom de fichier = titre de la carte (localStorage) ou titre slide */
       const meta = (() => { try { return JSON.parse(localStorage.getItem(`slide_consultant_${id}`) || 'null') } catch { return null } })()
       const filename = (meta?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
 
@@ -154,10 +132,18 @@ export default function Preview() {
     } finally { setExporting(false) }
   }
 
+  /* Si l'utilisateur est en mode édition, on quitte d'abord puis on exporte */
+  const handleExport = () => {
+    if (textEditMode) {
+      setTextEditMode(false)
+      setTimeout(exportPNG, 80)
+    } else {
+      exportPNG()
+    }
+  }
+
   if (loading) return <p style={{ padding: 32, color: '#64748b' }}>Chargement…</p>
   if (!slide)  return <p style={{ padding: 32, color: '#dc2626' }}>Slide introuvable.</p>
-
-  const activeMode = editMode ? 'layout' : textEditMode ? 'text' : null
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0f172a' }}>
@@ -165,49 +151,33 @@ export default function Preview() {
       {/* ── Toolbar ── */}
       <div style={{ height: TOOLBAR_H, display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', background: '#1e293b', flexShrink: 0 }}>
 
-        <button onClick={() => navigate('/')} style={btn('#475569')}>← Biblio</button>
-        <button onClick={() => navigate(`/editeur/${id}`)} style={btn('#334155', 12)}>Formulaire</button>
+        {/* Navigation */}
+        <button onClick={() => navigate('/')} style={navBtn}>← Biblio</button>
+        <button onClick={() => navigate(`/editeur/${id}`)} style={navBtn}>Formulaire</button>
 
-        <div style={{ width: 1, height: 24, background: '#334155' }} />
+        <div style={{ width: 1, height: 24, background: '#334155', margin: '0 4px' }} />
 
-        {/* Mode texte */}
-        {activeMode !== 'layout' && (
-          !textEditMode ? (
-            <button onClick={() => setTextEditMode(true)} style={btn('#1f3fa3')}>✍️ Éditer le texte</button>
-          ) : (
-            <>
-              <button onClick={() => setTextEditMode(false)} style={btn('#16a34a')}>✓ Terminer</button>
-              <span style={{ color: saving ? '#f08a2a' : '#94a3b8', fontSize: 12 }}>
-                {saving ? 'Sauvegarde…' : '✓ Sauvegardé'}
-              </span>
-            </>
-          )
-        )}
-
-        {/* Mode layout */}
-        {activeMode !== 'text' && (
-          !editMode ? (
-            <button onClick={() => setEditMode(true)} style={btn('#475569', 12)}>⊞ Mise en page</button>
-          ) : (
-            <>
-              <button onClick={handleLock} style={btn('#16a34a')}>🔒 Verrouiller</button>
-              <button onClick={handleReset} style={btn('#64748b', 12)}>Réinit.</button>
-              <button onClick={handleCopyLayout} style={btn(copied ? '#16a34a' : '#7c3aed', 12)}>
-                {copied ? '✓ Copié' : '📋 Copier layout'}
-              </button>
-              <span style={{ color: '#94a3b8', fontSize: 11 }}>Glisse · redimensionne</span>
-            </>
-          )
+        {/* Edition */}
+        {!textEditMode ? (
+          <button onClick={() => setTextEditMode(true)} style={editBtn}>
+            Éditer le texte
+          </button>
+        ) : (
+          <>
+            <button onClick={() => setTextEditMode(false)} style={doneBtn}>
+              ✓ Terminer
+            </button>
+            <span style={{ fontSize: 12, color: saving ? '#f08a2a' : '#4ade80', fontWeight: 500 }}>
+              {saving ? 'Sauvegarde…' : '✓ Sauvegardé'}
+            </span>
+          </>
         )}
 
         <div style={{ flex: 1 }} />
 
-        <button
-          onClick={exportPNG}
-          disabled={exporting || !!activeMode}
-          style={btn('#f08a2a')}
-        >
-          {exporting ? 'Export…' : 'Exporter PNG'}
+        {/* Export */}
+        <button onClick={handleExport} disabled={exporting} style={exportBtn(exporting)}>
+          {exporting ? 'Export en cours…' : '↓ Exporter PNG'}
         </button>
       </div>
 
@@ -218,10 +188,10 @@ export default function Preview() {
             <div ref={slideRef}>
               <SlideTemplate
                 {...slide}
-                editMode={editMode}
+                editMode={false}
                 textEditMode={textEditMode}
                 layout={layout}
-                onLayoutChange={setLayout}
+                onLayoutChange={() => {}}
                 onTextChange={handleTextChange}
               />
             </div>
@@ -229,16 +199,58 @@ export default function Preview() {
         </div>
       </div>
 
-      {/* Hint mode texte */}
-      {textEditMode && (
-        <div style={{ position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', background: 'rgba(31,63,163,0.92)', color: '#fff', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontFamily: 'Arial', zIndex: 100, pointerEvents: 'none' }}>
-          Clique sur n'importe quel texte pour l'éditer · Entrée ou Tab pour valider · Échap pour annuler
-        </div>
-      )}
     </div>
   )
 }
 
-function btn(bg, size = 13) {
-  return { background: bg, color: '#fff', border: 'none', borderRadius: 6, padding: '7px 13px', fontSize: size, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
+/* ── Styles toolbar ── */
+const navBtn = {
+  background: 'transparent',
+  color: '#94a3b8',
+  border: '1px solid #334155',
+  borderRadius: 6,
+  padding: '6px 13px',
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+}
+
+const editBtn = {
+  background: '#1f3fa3',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 6,
+  padding: '7px 16px',
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+}
+
+const doneBtn = {
+  background: '#16a34a',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 6,
+  padding: '7px 16px',
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+}
+
+function exportBtn(disabled) {
+  return {
+    background: disabled ? '#475569' : '#f08a2a',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    padding: '7px 16px',
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: disabled ? 'default' : 'pointer',
+    whiteSpace: 'nowrap',
+    opacity: disabled ? 0.7 : 1,
+  }
 }

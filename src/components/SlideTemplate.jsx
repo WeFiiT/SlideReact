@@ -40,12 +40,32 @@ const BLOCK_LABELS = {
 const PH = {
   titre:      'Immersion PM – Enjeu/pbmatique mission.',
   sous_titre: "Périmètre fonctionnel : PM sur l'app/web, sur périmètre… fonctionnalité X…",
-  contexte:   ["Description entreprise et organisation : présentation client, CA", "Enjeux globaux d'entreprise / contexte marché", "Parties prenantes : Marketing, Business, Comex…"],
+  contexte:   [
+    "Description entreprise et organisation : présentation client, CA",
+    "Enjeux globaux d'entreprise / contexte marché",
+    "Parties prenantes : Marketing, Business, Comex…",
+  ],
   tags:       ["X utilisateurs", "KPI 1", "Secteur", "B2C/B2B"],
-  perimetre:  ["App / Web – Front / Back", "Place dans l'organisation : Tribe X au sein de la Direction Y", "Composition de la squad : Squad X, composée de x devs / x QA / x PO…"],
-  enjeux:     ["Enjeu/OKR de la mission 1 (augmenter les revenus/améliorer la conversion…)", "Enjeu/OKR de la mission 2 (livrer la fonctionnalité/projet X…)", "Enjeu/OKR de la mission 3 (optimiser l'organisation, optimiser le modèle de donnée…)"],
-  impact:     ["Pourquoi ça fité ? Mise en place de process, alignement de parties prenantes (tech x Produit…)", "Initiatives stratégiques ? Généralisation méthode Discovery pour dérisquer…", "Evolutions d'organisation ? …"],
-  metriques:  [{ chiffre: '+X%', label: 'de conversion' }, { chiffre: 'X€', label: '/an de CA' }, { chiffre: 'X', label: 'de xxxxx' }],
+  perimetre:  [
+    "App / Web – Front / Back",
+    "Place dans l'organisation : Tribe X au sein de la Direction Y",
+    "Composition de la squad : Squad X, composée de x devs / x QA / x PO…",
+  ],
+  enjeux:     [
+    "Enjeu/OKR de la mission 1 (augmenter les revenus/améliorer la conversion…)",
+    "Enjeu/OKR de la mission 2 (livrer la fonctionnalité/projet X…)",
+    "Enjeu/OKR de la mission 3 (optimiser l'organisation, optimiser le modèle de donnée…)",
+  ],
+  impact:     [
+    "Pourquoi ça fité ? Mise en place de process, alignement de parties prenantes (tech x Produit…)",
+    "Initiatives stratégiques ? Généralisation méthode Discovery pour dérisquer…",
+    "Évolutions d'organisation ? …",
+  ],
+  metriques:  [
+    { chiffre: '+X%', label: 'de conversion' },
+    { chiffre: 'X€',  label: '/an de CA'     },
+    { chiffre: 'X',   label: 'de xxxxx'      },
+  ],
 }
 
 function fill(arr, phs) {
@@ -53,30 +73,47 @@ function fill(arr, phs) {
 }
 
 /* ─── Édition inline ───────────────────────────────────────── */
+function phHtml(placeholder, styleColor) {
+  if (!placeholder) return ''
+  const color = (styleColor === '#ffffff' || styleColor === C.blanc)
+    ? 'rgba(255,255,255,0.45)' : '#aab0c8'
+  return `<span data-ph style="color:${color};font-style:italic;pointer-events:none">${placeholder}</span>`
+}
+
 function EditText({ value, placeholder, onSave, style = {}, tag: Tag = 'span', multiline = false }) {
-  if (!onSave) return <Tag style={style}>{value}</Tag>
+  if (!onSave) return <Tag style={style}>{value || ''}</Tag>
+
+  const isEmpty = !value?.trim()
+  const html = isEmpty ? phHtml(placeholder, style.color) : (value ?? '')
+
   return (
     <Tag
       contentEditable
       suppressContentEditableWarning
-      data-placeholder={placeholder}
+      onFocus={e => {
+        if (e.currentTarget.querySelector('[data-ph]')) {
+          e.currentTarget.innerHTML = ''
+        }
+      }}
       onBlur={e => {
         const v = e.currentTarget.innerText.trim()
         if (v !== (value ?? '')) onSave(v)
       }}
       onKeyDown={e => {
         if (!multiline && e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
-        if (e.key === 'Escape') { e.currentTarget.innerText = value ?? ''; e.currentTarget.blur() }
+        if (e.key === 'Escape') { e.currentTarget.innerHTML = html; e.currentTarget.blur() }
       }}
       style={{
         ...style,
         outline: 'none',
         boxShadow: 'inset 0 0 0 1.5px rgba(240,138,42,0.55)',
         borderRadius: 2, cursor: 'text',
-        padding: '1px 3px', margin: '-1px -3px',
+        ...(style.padding
+          ? {}
+          : { padding: '1px 3px', margin: '-1px -3px' }),
         minWidth: 12, display: style.display ?? 'inline-block',
       }}
-      dangerouslySetInnerHTML={{ __html: value ?? '' }}
+      dangerouslySetInnerHTML={{ __html: html }}
     />
   )
 }

@@ -47,17 +47,3 @@ body {
   min-height: 100vh;
 }
 
-/* Placeholder CSS pour les champs contentEditable vides */
-[contenteditable][data-placeholder]:empty::before {
-  content: attr(data-placeholder);
-  color: #9aa0b8;
-  font-style: italic;
-  pointer-events: none;
-  display: block;
-}
-
-/* Placeholder titre header (fond bleu foncé) */
-span[contenteditable][data-placeholder]:empty::before {
-  color: rgba(255,255,255,0.45);
-  display: inline;
-}
