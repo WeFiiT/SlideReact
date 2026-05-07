@@ -25,13 +25,13 @@ async function uploadLogoFromNotion(
   page: any,
   sbHeaders: Record<string, string>,
 ): Promise<string | null> {
-  // Cherche la propriété logo (insensible à la casse)
-  const p = Object.values(page.properties).find(
-    (v: any) => v.type === 'files' && (
-      Object.keys(page.properties).find(k => page.properties[k] === v)
-        ?.toLowerCase().includes('logo')
-    )
-  ) as any
+  // Trouver la première propriété de type "files" dont le nom contient "logo"
+  const logoKey = Object.keys(page.properties).find(
+    k => page.properties[k].type === 'files' && k.toLowerCase().includes('logo')
+  )
+  if (!logoKey) return null
+
+  const p = page.properties[logoKey]
   if (!p?.files?.length) return null
 
   const file = p.files[0]
