@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { TYPES, TYPE_COLORS } from '../constants'
 
 const EMPTY = {
   titre: '',
@@ -14,7 +15,10 @@ const EMPTY = {
   metrique_2_chiffre: '', metrique_2_label: '',
   metrique_3_chiffre: '', metrique_3_label: '',
   logo_url: '',
+  type_mission: '',
 }
+
+const EMPTY_CONSULTANT = { prenom: '', nom: '', card_titre: '' }
 
 export default function Editeur() {
   const { id } = useParams()
@@ -22,11 +26,21 @@ export default function Editeur() {
   const isEditing = Boolean(id)
   const fileInputRef = useRef(null)
 
-  const [form, setForm] = useState(EMPTY)
-  const [loading, setLoading] = useState(isEditing)
-  const [saving, setSaving] = useState(false)
+  const [form, setForm]           = useState(EMPTY)
+  const [consultant, setConsultant] = useState(EMPTY_CONSULTANT)
+  const [loading, setLoading]     = useState(isEditing)
+  const [saving, setSaving]       = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
+
+  useEffect(() => {
+    /* Charger les infos consultant depuis localStorage */
+    if (!id) return
+    try {
+      const c = JSON.parse(localStorage.getItem(`slide_consultant_${id}`) || '{}')
+      setConsultant({ prenom: c.prenom || '', nom: c.nom || '', card_titre: c.card_titre || '' })
+    } catch {}
+  }, [id])
 
   useEffect(() => {
     if (!isEditing) return
@@ -35,11 +49,12 @@ export default function Editeur() {
         if (error) { console.error(error); return }
         setForm({
           ...EMPTY, ...data,
-          contexte:  data.contexte?.length  ? data.contexte  : ['', '', ''],
-          tags:      data.tags?.length      ? data.tags      : ['', '', '', ''],
-          perimetre: data.perimetre?.length ? data.perimetre : ['', '', ''],
-          enjeux:    data.enjeux?.length    ? data.enjeux    : ['', '', ''],
-          impact:    data.impact?.length    ? data.impact    : ['', '', ''],
+          contexte:     data.contexte?.length  ? data.contexte  : ['', '', ''],
+          tags:         data.tags?.length      ? data.tags      : ['', '', '', ''],
+          perimetre:    data.perimetre?.length ? data.perimetre : ['', '', ''],
+          enjeux:       data.enjeux?.length    ? data.enjeux    : ['', '', ''],
+          impact:       data.impact?.length    ? data.impact    : ['', '', ''],
+          type_mission: data.type_mission || '',
         })
         setLoading(false)
       })
@@ -75,11 +90,12 @@ export default function Editeur() {
     setSaving(true)
     const payload = {
       ...form,
-      contexte:  form.contexte.filter(Boolean),
-      tags:      form.tags.filter(Boolean),
-      perimetre: form.perimetre.filter(Boolean),
-      enjeux:    form.enjeux.filter(Boolean),
-      impact:    form.impact.filter(Boolean),
+      contexte:     form.contexte.filter(Boolean),
+      tags:         form.tags.filter(Boolean),
+      perimetre:    form.perimetre.filter(Boolean),
+      enjeux:       form.enjeux.filter(Boolean),
+      impact:       form.impact.filter(Boolean),
+      type_mission: form.type_mission || null,
     }
     let error, data
     if (isEditing) {
@@ -87,9 +103,22 @@ export default function Editeur() {
     } else {
       ;({ data, error } = await supabase.from('slides').insert(payload).select().single())
     }
+    if (error) { setSaving(false); alert('Erreur : ' + error.message); return }
+
+    /* Sauvegarder les infos consultant dans localStorage */
+    const savedId = isEditing ? id : data.id
+    try {
+      const existing = JSON.parse(localStorage.getItem(`slide_consultant_${savedId}`) || '{}')
+      localStorage.setItem(`slide_consultant_${savedId}`, JSON.stringify({
+        ...existing,
+        prenom:     consultant.prenom.trim(),
+        nom:        consultant.nom.trim(),
+        card_titre: consultant.card_titre.trim(),
+      }))
+    } catch {}
+
     setSaving(false)
-    if (error) { alert('Erreur : ' + error.message); return }
-    navigate(`/preview/${isEditing ? id : data.id}`)
+    navigate(`/preview/${savedId}`)
   }
 
   if (loading) return <p style={{ padding: 32, color: '#64748b' }}>Chargement…</p>
@@ -116,6 +145,39 @@ export default function Editeur() {
         <p style={{ margin: '0 0 36px', color: '#94a3b8', fontSize: 13 }}>
           Remplis les sections ci-dessous — chaque champ correspond à une zone de la slide.
         </p>
+
+        {/* ── Carte bibliothèque ── */}
+        <Card icon="🗂️" color="#475569" title="Carte bibliothèque" desc="Métadonnées affichées dans la bibliothèque — pas sur la slide">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', marginBottom: 12 }}>
+            <Field label="Prénom du consultant" value={consultant.prenom}
+              onChange={v => setConsultant(c => ({ ...c, prenom: v }))} placeholder="Ex : Marie" />
+            <Field label="Nom du consultant" value={consultant.nom}
+              onChange={v => setConsultant(c => ({ ...c, nom: v }))} placeholder="Ex : Dupont" />
+          </div>
+          <Field label="Titre de la carte" value={consultant.card_titre}
+            onChange={v => setConsultant(c => ({ ...c, card_titre: v }))} placeholder="Ex : Transformation digitale RH" />
+          <div style={{ marginTop: 14 }}>
+            <label style={labelStyle}>Type de mission</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+              {TYPES.map(t => {
+                const active = form.type_mission === t
+                return (
+                  <button key={t} type="button"
+                    onClick={() => set('type_mission', active ? '' : t)}
+                    style={{
+                      background: active ? TYPE_COLORS[t] : '#f1f5f9',
+                      color: active ? '#fff' : '#475569',
+                      border: `2px solid ${active ? TYPE_COLORS[t] : 'transparent'}`,
+                      borderRadius: 20, padding: '6px 16px',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
+                    {t}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </Card>
 
         {/* ── En-tête ── */}
         <Card icon="◼" color="#002882" title="En-tête" desc="Bandeau bleu supérieur de la slide">
@@ -311,6 +373,11 @@ const inputBase = {
   fontFamily: 'inherit',
   transition: 'border-color 0.15s',
   background: '#fff',
+}
+
+const labelStyle = {
+  display: 'block', fontSize: 11, fontWeight: 700,
+  color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5,
 }
 
 function toolBtn(bg) {

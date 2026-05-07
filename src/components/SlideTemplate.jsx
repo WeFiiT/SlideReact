@@ -85,6 +85,7 @@ function EditText({ value, placeholder, onSave, style = {}, tag: Tag = 'span', m
     : ''
 
   /* Met à jour le DOM seulement quand on n'est pas en train d'éditer */
+  const active = !!onSave
   useLayoutEffect(() => {
     if (!elRef.current || editing.current) return
     if (value?.trim()) {
@@ -92,7 +93,7 @@ function EditText({ value, placeholder, onSave, style = {}, tag: Tag = 'span', m
     } else {
       elRef.current.innerHTML = phHTML
     }
-  }, [value, phHTML])
+  }, [value, phHTML, active])
 
   if (!onSave) return <Tag style={style}>{value || ''}</Tag>
 
