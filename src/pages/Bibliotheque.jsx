@@ -265,13 +265,18 @@ export default function Bibliotheque() {
         <div style={{ flex: 1 }} />
 
         {/* Date */}
-        <select
-          value={dateFilter}
-          onChange={e => setDateFilter(e.target.value)}
-          style={{ height: 34, border: '1px solid #E8E6E1', borderRadius: 999, padding: '0 12px', fontSize: 13, color: '#1A1E2C', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit', fontWeight: 500 }}
-        >
-          {DATE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <select
+            value={dateFilter}
+            onChange={e => setDateFilter(e.target.value)}
+            style={{ height: 34, border: '1px solid #E8E6E1', borderRadius: 999, padding: '0 30px 0 14px', fontSize: 13, color: '#1A1E2C', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit', fontWeight: 500, appearance: 'none', WebkitAppearance: 'none' }}
+          >
+            {DATE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <svg style={{ position: 'absolute', right: 10, pointerEvents: 'none' }} width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 5l3 3 3-3" />
+          </svg>
+        </div>
 
         {hasActiveFilters && (
           <button
