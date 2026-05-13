@@ -361,7 +361,7 @@ export default function Bibliotheque() {
         <WefiitLogoSVG size={32} />
         <span style={{ fontSize: 15, fontWeight: 700, color: '#0E2A6B', letterSpacing: -0.2 }}>WeFiiT</span>
         <div style={{ width: 1, height: 18, background: '#E8E6E1', margin: '0 4px' }} />
-        <span style={{ fontSize: 13, color: '#0E2A6B', fontWeight: 600 }}>Bibliothèque</span>
+        <span style={{ fontSize: 13, color: '#0E2A6B', fontWeight: 600 }}>Annuaire</span>
         <div style={{ flex: 1 }} />
         {/* User chip */}
         <div style={{ height: 40, padding: '0 14px 0 6px', background: '#fff', border: '1px solid #E8E6E1', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
@@ -476,7 +476,7 @@ export default function Bibliotheque() {
       {/* ── Title + actions ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0E2A6B', margin: 0, letterSpacing: -0.4, fontFamily: "'Geomanist', Arial, sans-serif" }}>Bibliothèque</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0E2A6B', margin: 0, letterSpacing: -0.4, fontFamily: "'Geomanist', Arial, sans-serif" }}>Annuaire</h1>
           <span style={{ fontSize: 13, color: '#6E7385' }}>{slides.length} slide{slides.length !== 1 ? 's' : ''}</span>
         </div>
         <div style={{ flex: 1 }} />
@@ -502,7 +502,7 @@ export default function Bibliotheque() {
         {!selectMode && (
           <button onClick={openModal} style={{ height: 38, padding: '0 16px', background: '#E97433', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M8 3v10M3 8h10" /></svg>
-            Créer une slide
+            Ajouter une mission
           </button>
         )}
       </div>
@@ -765,7 +765,7 @@ export default function Bibliotheque() {
               Nouvelle slide
             </h2>
             <p style={{ margin: '0 0 24px', color: '#94a3b8', fontSize: 13 }}>
-              Le consultant et le titre apparaîtront dans la bibliothèque.
+              Le consultant et le titre apparaîtront dans l'annuaire.
             </p>
 
             {[
