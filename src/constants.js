@@ -1,5 +1,24 @@
 export const TYPES = ['Conseil', 'Produit', 'Qualité', 'Coaching & Formation']
 
+export const DISCIPLINES = [
+  'Product Management',
+  'Product Ops',
+  'Product Data',
+  'Product Marketing',
+  'Agile / Coaching',
+]
+
+export const NIVEAUX = ['Junior', 'Confirmé', 'Senior', 'Lead']
+
+export const SEGMENTATIONS_WEFIIT = [
+  'Hospitalité & Evénementiel',
+  'Médias & Divertissement',
+  'Retail & Luxe & E-Commerce',
+  'Mobilité & Industrie 4.0',
+  'Services de paiement & Saas tech B2B',
+  'Energie durable & Santé',
+]
+
 export const TYPE_COLORS = {
   'Conseil':              '#2563eb',
   'Produit':              '#7c3aed',

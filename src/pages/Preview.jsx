@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import PptxGenJS from 'pptxgenjs'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { getUser } from './Login'
@@ -212,11 +213,26 @@ export default function Preview() {
       const canvas = await captureCanvas()
       if (!canvas) return
       const imgData = canvas.toDataURL('image/png')
-      // A4 landscape in mm: 297 × 210 — slide is 16:9 so we fit to width
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 167.0625] })
       pdf.addImage(imgData, 'PNG', 0, 0, 297, 167.0625)
       const filename = (slide?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
       pdf.save(`${filename}.pdf`)
+    } finally { setExporting(false) }
+  }
+
+  const exportPPTX = async () => {
+    if (!slideRef.current) return
+    setExporting(true)
+    try {
+      const canvas = await captureCanvas()
+      if (!canvas) return
+      const imgData = canvas.toDataURL('image/png')
+      const pptx = new PptxGenJS()
+      pptx.layout = 'LAYOUT_16x9'
+      const pSlide = pptx.addSlide()
+      pSlide.addImage({ data: imgData, x: 0, y: 0, w: '100%', h: '100%' })
+      const filename = (slide?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
+      await pptx.writeFile({ fileName: `${filename}.pptx` })
     } finally { setExporting(false) }
   }
 
@@ -306,7 +322,7 @@ export default function Preview() {
 
   const handleExport = (format) => {
     setExportMenu(false)
-    const run = format === 'pdf' ? exportPDF : exportPNG
+    const run = format === 'pdf' ? exportPDF : format === 'pptx' ? exportPPTX : exportPNG
     if (textEditMode) {
       setTextEditMode(false)
       setTimeout(run, 80)
@@ -439,8 +455,9 @@ export default function Preview() {
               border: '1px solid #E8E6E1', minWidth: 160, zIndex: 200,
             }}>
               {[
-                { fmt: 'png', label: 'Exporter en PNG' },
-                { fmt: 'pdf', label: 'Exporter en PDF' },
+                { fmt: 'png',  label: 'Exporter en PNG'  },
+                { fmt: 'pdf',  label: 'Exporter en PDF'  },
+                { fmt: 'pptx', label: 'Exporter en PPTX' },
               ].map(({ fmt, label }) => (
                 <button
                   key={fmt}
@@ -454,10 +471,15 @@ export default function Preview() {
                       <rect x="2" y="2" width="12" height="12" rx="2"/>
                       <path d="M5 10l2-2.5L9 10l1.5-2 1.5 2"/>
                     </svg>
-                  ) : (
+                  ) : fmt === 'pdf' ? (
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M9 2H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6z"/>
                       <path d="M9 2v4h4"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="1" y="4" width="14" height="9" rx="1.5"/>
+                      <path d="M4 7h2.5M4 9.5h2M10 7v3M10 7h2a1 1 0 0 1 0 2h-2"/>
                     </svg>
                   )}
                   {label}

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { TYPES, TYPE_COLORS, normalizeName } from '../constants'
+import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, normalizeName } from '../constants'
+import ClientSelector from '../components/ClientSelector'
 import { getUser } from './Login'
 
 const TOPBAR_H = 56
@@ -23,6 +24,10 @@ const EMPTY = {
   prenom: '',
   nom: '',
   card_titre: '',
+  client: '',
+  segmentation: '',
+  discipline: '',
+  niveau_discipline: '',
 }
 
 export default function Editeur() {
@@ -59,10 +64,14 @@ export default function Editeur() {
           perimetre:    data.perimetre?.length ? data.perimetre : ['', '', ''],
           enjeux:       data.enjeux?.length    ? data.enjeux    : ['', '', ''],
           impact:       data.impact?.length    ? data.impact    : ['', '', ''],
-          type_mission: data.type_mission || '',
-          prenom:       data.prenom       || '',
-          nom:          data.nom          || '',
-          card_titre:   data.card_titre   || '',
+          type_mission:      data.type_mission      || '',
+          prenom:            data.prenom            || '',
+          nom:               data.nom               || '',
+          card_titre:        data.card_titre        || '',
+          client:            data.client            || '',
+          segmentation:      data.segmentation      || '',
+          discipline:        data.discipline        || '',
+          niveau_discipline: data.niveau_discipline || '',
         })
         setLoading(false)
       })
@@ -78,7 +87,11 @@ export default function Editeur() {
     type_mission: f.type_mission  || null,
     prenom:       f.prenom.trim() || null,
     nom:          f.nom.trim()    || null,
-    card_titre:   f.card_titre.trim() || null,
+    card_titre:        f.card_titre.trim() || null,
+    client:            f.client || null,
+    segmentation:      f.segmentation || null,
+    discipline:        f.discipline || null,
+    niveau_discipline: f.niveau_discipline || null,
   })
 
   const schedAutoSave = (updated) => {
@@ -338,6 +351,59 @@ export default function Editeur() {
               <Field label="Titre de la carte" value={form.card_titre}
                 onChange={v => set('card_titre', v)} placeholder="Ex : Transformation digitale RH"
                 error={errors.card_titre} />
+              <ClientSelector
+                client={form.client}
+                segmentation={form.segmentation}
+                onChange={({ client, segmentation }) => {
+                  setForm(f => {
+                    const updated = { ...f, client, segmentation }
+                    schedAutoSave(updated)
+                    return updated
+                  })
+                }}
+              />
+              <div style={{ marginTop: 14 }}>
+                <label style={labelStyle}>Discipline</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                  {DISCIPLINES.map(d => {
+                    const active = form.discipline === d
+                    return (
+                      <button key={d} type="button"
+                        onClick={() => set('discipline', active ? '' : d)}
+                        style={{
+                          background: active ? '#0E2A6B' : '#f1f5f9',
+                          color: active ? '#fff' : '#475569',
+                          border: `2px solid ${active ? '#0E2A6B' : 'transparent'}`,
+                          borderRadius: 20, padding: '6px 16px',
+                          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                        {d}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <label style={labelStyle}>Niveau</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                  {NIVEAUX.map(n => {
+                    const active = form.niveau_discipline === n
+                    return (
+                      <button key={n} type="button"
+                        onClick={() => set('niveau_discipline', active ? '' : n)}
+                        style={{
+                          background: active ? '#E97433' : '#f1f5f9',
+                          color: active ? '#fff' : '#475569',
+                          border: `2px solid ${active ? '#E97433' : 'transparent'}`,
+                          borderRadius: 20, padding: '6px 16px',
+                          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                        {n}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               <div style={{ marginTop: 14 }}>
                 <label style={labelStyle}>Type de mission</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>

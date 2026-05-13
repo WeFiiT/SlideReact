@@ -4,10 +4,12 @@ import { createRoot } from 'react-dom/client'
 import JSZip from 'jszip'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import PptxGenJS from 'pptxgenjs'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
-import { TYPES, TYPE_COLORS, computeStatus, normalizeName } from '../constants'
+import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, computeStatus, normalizeName } from '../constants'
+import ClientSelector from '../components/ClientSelector'
 import { getUser, logout } from './Login'
 
 const DATE_OPTIONS = [
@@ -25,7 +27,7 @@ export default function Bibliotheque() {
   const [loading, setLoading]     = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [creating, setCreating]   = useState(false)
-  const [draft, setDraft]         = useState({ prenom: '', nom: '', titre: '', type_mission: '' })
+  const [draft, setDraft]         = useState({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '' })
 
   /* Filtres */
   const [search,       setSearch]       = useState('')
@@ -104,6 +106,16 @@ export default function Bibliotheque() {
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 297, 167.0625)
       }
       pdf.save(`export-slides-${targets.length}.pdf`)
+    } else if (format === 'pptx') {
+      const pptx = new PptxGenJS()
+      pptx.layout = 'LAYOUT_16x9'
+      for (let i = 0; i < targets.length; i++) {
+        setBatchProgress({ current: i + 1, total: targets.length })
+        const canvas = await renderSlideCanvas(targets[i])
+        const pSlide = pptx.addSlide()
+        pSlide.addImage({ data: canvas.toDataURL('image/png'), x: 0, y: 0, w: '100%', h: '100%' })
+      }
+      await pptx.writeFile({ fileName: `export-slides-${targets.length}.pptx` })
     } else {
       const zip = new JSZip()
       for (let i = 0; i < targets.length; i++) {
@@ -235,17 +247,21 @@ export default function Bibliotheque() {
       .from('slides')
       .insert({
         contexte: [], tags: [], perimetre: [], enjeux: [], impact: [],
-        type_mission: draft.type_mission || null,
-        prenom:       draft.prenom.trim(),
-        nom:          draft.nom.trim(),
-        card_titre:   draft.titre.trim(),
+        type_mission:      draft.type_mission || null,
+        prenom:            draft.prenom.trim(),
+        nom:               draft.nom.trim(),
+        card_titre:        draft.titre.trim(),
+        client:            draft.client || null,
+        segmentation:      draft.segmentation || null,
+        discipline:        draft.discipline || null,
+        niveau_discipline: draft.niveau_discipline || null,
       })
       .select()
       .single()
     if (error) { alert('Erreur : ' + error.message); setCreating(false); return }
     setCreating(false)
     setShowModal(false)
-    setDraft({ prenom: '', nom: '', titre: '', type_mission: '' })
+    setDraft({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '' })
     navigate(`/preview/${data.id}?edit=1`)
   }
 
@@ -553,8 +569,9 @@ export default function Bibliotheque() {
             {batchFormatMenu && (
               <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, background: '#1e293b', borderRadius: 8, padding: 4, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', border: '1px solid #334155', minWidth: 180, zIndex: 600 }}>
                 {[
-                  { fmt: 'png', label: 'PNG — ZIP de fichiers',       icon: 'M2 12h12M8 2v8M5 7l3-3 3 3' },
-                  { fmt: 'pdf', label: 'PDF — Document multi-pages',  icon: 'M9 2H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6zM9 2v4h4' },
+                  { fmt: 'png',  label: 'PNG — ZIP de fichiers',        icon: 'M2 12h12M8 2v8M5 7l3-3 3 3' },
+                  { fmt: 'pdf',  label: 'PDF — Document multi-pages',   icon: 'M9 2H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6zM9 2v4h4' },
+                  { fmt: 'pptx', label: 'PPTX — Présentation multi-slides', icon: 'M1 4h14v9H1zM4 7h2.5M4 9.5h2M10 7v3M10 7h2a1 1 0 0 1 0 2h-2' },
                 ].map(({ fmt, label, icon }) => (
                   <button key={fmt} onClick={() => handleBatchExport(fmt)}
                     style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#e2e8f0', fontWeight: 500, cursor: 'pointer', borderRadius: 6, textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 10 }}
@@ -641,6 +658,56 @@ export default function Bibliotheque() {
                 />
               </div>
             ))}
+
+            <ClientSelector
+              client={draft.client}
+              segmentation={draft.segmentation}
+              onChange={({ client, segmentation }) => setDraft(p => ({ ...p, client, segmentation }))}
+            />
+
+            {/* Discipline */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Discipline</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                {DISCIPLINES.map(d => {
+                  const active = draft.discipline === d
+                  return (
+                    <button key={d} onClick={() => setDraft(p => ({ ...p, discipline: active ? '' : d }))}
+                      style={{
+                        background: active ? '#0E2A6B' : '#f1f5f9',
+                        color: active ? '#fff' : '#475569',
+                        border: active ? '2px solid #0E2A6B' : '2px solid transparent',
+                        borderRadius: 20, padding: '6px 16px',
+                        fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                      {d}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Niveau */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={labelStyle}>Niveau</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                {NIVEAUX.map(n => {
+                  const active = draft.niveau_discipline === n
+                  return (
+                    <button key={n} onClick={() => setDraft(p => ({ ...p, niveau_discipline: active ? '' : n }))}
+                      style={{
+                        background: active ? '#E97433' : '#f1f5f9',
+                        color: active ? '#fff' : '#475569',
+                        border: active ? '2px solid #E97433' : '2px solid transparent',
+                        borderRadius: 20, padding: '6px 16px',
+                        fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                      {n}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
             {/* Type de mission */}
             <div style={{ marginBottom: 24 }}>
