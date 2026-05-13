@@ -111,6 +111,19 @@ Deno.serve(async (req) => {
   // Upload du logo depuis Notion → Supabase Storage
   const logoUrl = await uploadLogoFromNotion(page, sbHeaders)
 
+  // Résoudre le client (nom + segmentation Wefiit)
+  let clientName: string | null = null
+  let segmentation: string | null = null
+  const clientRelId: string | undefined = page.properties['Client']?.relation?.[0]?.id
+  if (clientRelId) {
+    const clientRes = await fetch(`https://api.notion.com/v1/pages/${clientRelId}`, { headers: notionHeaders })
+    if (clientRes.ok) {
+      const clientPage = await clientRes.json()
+      clientName   = clientPage.properties?.['Name']?.title?.[0]?.plain_text ?? null
+      segmentation = clientPage.properties?.['Segmentation Wefiit']?.select?.name ?? null
+    }
+  }
+
   // Mapper les propriétés Notion → champs slide
   const slide = {
     notion_page_id:     pageId,
@@ -126,6 +139,11 @@ Deno.serve(async (req) => {
     enjeux:             [1, 2, 3].map(n => getProp(page, `Enjeux ${n}`)),
     impact:             [1, 2, 3].map(n => getProp(page, `Impact ${n}`)),
     logo_url:           logoUrl || getProp(page, 'Logo URL') || null,
+    client:             clientName,
+    segmentation:       segmentation,
+    discipline:         page.properties?.['Discipline']?.select?.name ?? null,
+    niveau_discipline:  page.properties?.['Niveau Discipline (We.Horizon)']?.select?.name ?? null,
+    type_produit:       (page.properties?.['Type produit']?.multi_select ?? []).map((v: any) => v.name).filter(Boolean),
     metrique_1_chiffre: getProp(page, 'Métrique 1 - Chiffre') || null,
     metrique_1_label:   getProp(page, 'Métrique 1 - Label') || null,
     metrique_2_chiffre: getProp(page, 'Métrique 2 - Chiffre') || null,

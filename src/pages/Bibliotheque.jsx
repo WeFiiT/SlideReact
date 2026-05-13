@@ -4,13 +4,21 @@ import { createRoot } from 'react-dom/client'
 import JSZip from 'jszip'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
-import PptxGenJS from 'pptxgenjs'
+import { buildNativePptx } from '../utils/exportPptx'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, computeStatus, normalizeName } from '../constants'
 import ClientSelector from '../components/ClientSelector'
 import { getUser, logout } from './Login'
+
+const VIEWS = [
+  { id: 'all',     label: 'Toutes les missions',  field: null                },
+  { id: 'segment', label: 'Segment & Client',     field: 'segmentation'      },
+  { id: 'niveau',  label: 'Niveau de discipline', field: 'niveau_discipline' },
+  { id: 'produit', label: 'Type de produit',      field: 'type_produit'      },
+  { id: 'mission', label: 'Type de mission',      field: 'type_mission'      },
+]
 
 const DATE_OPTIONS = [
   { label: 'Toutes les dates', value: 'all' },
@@ -47,6 +55,7 @@ export default function Bibliotheque() {
   const [batchProgress,   setBatchProgress]   = useState({ current: 0, total: 0 })
   const [batchFormatMenu, setBatchFormatMenu] = useState(false)
   const batchMenuRef                          = useRef(null)
+  const [activeView,      setActiveView]      = useState('all')
 
   const toggleSelect = (id) =>
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -107,14 +116,8 @@ export default function Bibliotheque() {
       }
       pdf.save(`export-slides-${targets.length}.pdf`)
     } else if (format === 'pptx') {
-      const pptx = new PptxGenJS()
-      pptx.layout = 'LAYOUT_16x9'
-      for (let i = 0; i < targets.length; i++) {
-        setBatchProgress({ current: i + 1, total: targets.length })
-        const canvas = await renderSlideCanvas(targets[i])
-        const pSlide = pptx.addSlide()
-        pSlide.addImage({ data: canvas.toDataURL('image/png'), x: 0, y: 0, w: '100%', h: '100%' })
-      }
+      setBatchProgress({ current: 0, total: targets.length })
+      const pptx = await buildNativePptx(targets)
       await pptx.writeFile({ fileName: `export-slides-${targets.length}.pptx` })
     } else {
       const zip = new JSZip()
@@ -237,6 +240,73 @@ export default function Bibliotheque() {
         normalizeName(s.nom)    === user.nomNorm)
     )) : filteredSlides
   , [filteredSlides, user])
+
+  const groupedSlides = useMemo(() => {
+    if (activeView === 'all') return []
+    const view = VIEWS.find(v => v.id === activeView)
+    if (!view?.field) return []
+
+    const favsFirst = (arr) => user
+      ? [...arr].sort((a, b) => {
+          const af = (a.favorited_by || []).includes(user.email) ? 0 : 1
+          const bf = (b.favorited_by || []).includes(user.email) ? 0 : 1
+          return af - bf
+        })
+      : arr
+
+    const byKey = {}
+    const seenSet = new Set()
+    filteredSlides.forEach(s => {
+      const raw = s[view.field]
+      const keys = Array.isArray(raw)
+        ? (raw.length > 0 ? raw : ['Non renseigné'])
+        : [raw || 'Non renseigné']
+      keys.forEach(k => {
+        if (!byKey[k]) { byKey[k] = []; seenSet.add(k) }
+        byKey[k].push(s)
+      })
+    })
+    const seen = [...seenSet]
+
+    const knownOrder = {
+      niveau_discipline: ['Junior', 'Confirmé', 'Senior', 'Lead'],
+      type_mission:      TYPES,
+      discipline:        DISCIPLINES,
+    }
+    const sorted = [...seen].sort((a, b) => {
+      if (a === 'Non renseigné') return 1
+      if (b === 'Non renseigné') return -1
+      const order = knownOrder[view.field]
+      if (order) {
+        const ia = order.indexOf(a) === -1 ? 999 : order.indexOf(a)
+        const ib = order.indexOf(b) === -1 ? 999 : order.indexOf(b)
+        return ia - ib
+      }
+      return a.localeCompare(b, 'fr')
+    })
+
+    if (activeView === 'segment') {
+      return sorted.map(seg => {
+        const byClient = {}
+        const clientSeen = []
+        byKey[seg].forEach(s => {
+          const c = s.client || 'Sans client'
+          if (!byClient[c]) { byClient[c] = []; clientSeen.push(c) }
+          byClient[c].push(s)
+        })
+        const sortedClients = [...clientSeen].sort((a, b) =>
+          a === 'Sans client' ? 1 : b === 'Sans client' ? -1 : a.localeCompare(b, 'fr')
+        )
+        return {
+          label: seg,
+          count: byKey[seg].length,
+          subGroups: sortedClients.map(c => ({ label: c, slides: favsFirst(byClient[c]) })),
+        }
+      })
+    }
+
+    return sorted.map(k => ({ label: k, count: byKey[k].length, slides: favsFirst(byKey[k]) }))
+  }, [activeView, filteredSlides, user])
 
   const canCreate = draft.prenom.trim() && draft.nom.trim() && draft.titre.trim()
 
@@ -366,7 +436,42 @@ export default function Bibliotheque() {
         </button>
       </div>
 
-    <div style={{ maxWidth: 880, margin: '0 auto', padding: '28px 24px 80px' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+
+      {/* ── Sidebar vues ── */}
+      <nav style={{ width: 220, flexShrink: 0, background: '#fff', borderRight: '1px solid #E8E6E1', overflowY: 'auto', padding: '20px 0', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 18px 10px', margin: 0 }}>Vues</p>
+        {VIEWS.map(v => {
+          const active = activeView === v.id
+          const icons = {
+            all:     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>,
+            segment: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 15V8l6-6 6 6v7"/><path d="M6 15v-4h4v4"/></svg>,
+            niveau:  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="11" width="4" height="4" rx="0.5"/><rect x="6" y="7" width="4" height="8" rx="0.5"/><rect x="11" y="3" width="4" height="12" rx="0.5"/></svg>,
+            produit: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1L1 4.5v7L8 15l7-3.5v-7L8 1z"/><path d="M1 4.5L8 8l7-3.5M8 8v7"/></svg>,
+            mission: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/><path d="M5 9h6M5 12h4"/></svg>,
+          }
+          return (
+            <button key={v.id} onClick={() => setActiveView(v.id)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 18px', border: 'none', cursor: 'pointer',
+                textAlign: 'left', fontFamily: 'inherit', fontSize: 13,
+                borderLeft: `3px solid ${active ? '#0E2A6B' : 'transparent'}`,
+                background: active ? '#EEF1FA' : 'transparent',
+                color: active ? '#0E2A6B' : '#6E7385',
+                fontWeight: active ? 700 : 500,
+                transition: 'background 0.12s',
+              }}>
+              {icons[v.id]}
+              {v.label}
+            </button>
+          )
+        })}
+      </nav>
+
+      {/* ── Contenu scrollable ── */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ maxWidth: 880, margin: '0 auto', padding: '28px 24px 80px' }}>
 
       {/* ── Title + actions ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
@@ -479,9 +584,45 @@ export default function Bibliotheque() {
       {/* ── Sections ── */}
       {loading ? (
         <p style={{ color: '#64748b' }}>Chargement…</p>
+      ) : activeView !== 'all' ? (
+        /* ── Vues groupées ── */
+        groupedSlides.length === 0 ? (
+          <p style={{ color: '#94a3b8', fontSize: 13 }}>
+            {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune slide.'}
+          </p>
+        ) : groupedSlides.map(({ label, count, slides: gs, subGroups }) => (
+          <div key={label} style={{ marginBottom: 44 }}>
+            <SectionHeader title={label} count={count} />
+            {subGroups ? (
+              /* Segment → Client (deux niveaux) */
+              subGroups.map(({ label: clientLabel, slides: cs }) => (
+                <div key={clientLabel} style={{ marginBottom: 20 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>{clientLabel}</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {cs.map(slide => (
+                      <SlideCard key={slide.id} slide={slide}
+                        onDeleted={handleDeleted} onValidated={handleValidated} onFavorited={handleFavorited}
+                        selectMode={selectMode} selected={selectedIds.includes(slide.id)} onSelect={toggleSelect}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {gs.map(slide => (
+                  <SlideCard key={slide.id} slide={slide}
+                    onDeleted={handleDeleted} onValidated={handleValidated} onFavorited={handleFavorited}
+                    selectMode={selectMode} selected={selectedIds.includes(slide.id)} onSelect={toggleSelect}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ))
       ) : (
+        /* ── Vue par défaut : Mes slides / Autres slides ── */
         <>
-          {/* Mes slides */}
           <SectionHeader title="Mes slides" count={myFilteredSlides.length} />
           {myFilteredSlides.length === 0 ? (
             <p style={{ color: '#94a3b8', fontSize: 13, marginBottom: 36 }}>
@@ -490,20 +631,13 @@ export default function Bibliotheque() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 40 }}>
               {myFilteredSlides.map(slide => (
-                <SlideCard
-                  key={slide.id} slide={slide}
-                  onDeleted={handleDeleted}
-                  onValidated={handleValidated}
-                  onFavorited={handleFavorited}
-                  selectMode={selectMode}
-                  selected={selectedIds.includes(slide.id)}
-                  onSelect={toggleSelect}
+                <SlideCard key={slide.id} slide={slide}
+                  onDeleted={handleDeleted} onValidated={handleValidated} onFavorited={handleFavorited}
+                  selectMode={selectMode} selected={selectedIds.includes(slide.id)} onSelect={toggleSelect}
                 />
               ))}
             </div>
           )}
-
-          {/* Autres slides */}
           <SectionHeader title="Autres slides" count={othersFilteredSlides.length} />
           {othersFilteredSlides.length === 0 ? (
             <p style={{ color: '#94a3b8', fontSize: 13 }}>
@@ -512,14 +646,9 @@ export default function Bibliotheque() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {othersFilteredSlides.map(slide => (
-                <SlideCard
-                  key={slide.id} slide={slide}
-                  onDeleted={handleDeleted}
-                  onValidated={handleValidated}
-                  onFavorited={handleFavorited}
-                  selectMode={selectMode}
-                  selected={selectedIds.includes(slide.id)}
-                  onSelect={toggleSelect}
+                <SlideCard key={slide.id} slide={slide}
+                  onDeleted={handleDeleted} onValidated={handleValidated} onFavorited={handleFavorited}
+                  selectMode={selectMode} selected={selectedIds.includes(slide.id)} onSelect={toggleSelect}
                 />
               ))}
             </div>
@@ -545,7 +674,7 @@ export default function Bibliotheque() {
             </span>
           )}
           <button
-            onClick={() => setSelectedIds([...myFilteredSlides, ...othersFilteredSlides].map(s => s.id))}
+            onClick={() => setSelectedIds(filteredSlides.map(s => s.id))}
             disabled={batchExporting}
             style={{ background: 'transparent', border: '1px solid #334155', color: '#cbd5e1', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: batchExporting ? 0.4 : 1 }}
           >
@@ -757,6 +886,8 @@ export default function Bibliotheque() {
           </div>
         </div>
       )}
+    </div>
+    </div>
     </div>
     </div>
   )

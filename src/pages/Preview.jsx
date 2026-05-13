@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
-import PptxGenJS from 'pptxgenjs'
+import { buildNativePptx } from '../utils/exportPptx'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { getUser } from './Login'
@@ -221,16 +221,9 @@ export default function Preview() {
   }
 
   const exportPPTX = async () => {
-    if (!slideRef.current) return
     setExporting(true)
     try {
-      const canvas = await captureCanvas()
-      if (!canvas) return
-      const imgData = canvas.toDataURL('image/png')
-      const pptx = new PptxGenJS()
-      pptx.layout = 'LAYOUT_16x9'
-      const pSlide = pptx.addSlide()
-      pSlide.addImage({ data: imgData, x: 0, y: 0, w: '100%', h: '100%' })
+      const pptx = await buildNativePptx([slide])
       const filename = (slide?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
       await pptx.writeFile({ fileName: `${filename}.pptx` })
     } finally { setExporting(false) }
