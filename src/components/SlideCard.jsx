@@ -71,6 +71,9 @@ export default function SlideCard({ slide, onDeleted, onValidated, selectMode = 
     normalizeName(slide.prenom) === user.prenomNorm &&
     normalizeName(slide.nom)    === user.nomNorm
 
+  // Sync local validated state if the parent updates the slide prop
+  useEffect(() => { setValidated(!!slide.validated) }, [slide.validated])
+
   useEffect(() => {
     if (!showMenu) return
     const h = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false) }

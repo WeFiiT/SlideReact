@@ -78,22 +78,19 @@ function EditText({ value, placeholder, onSave, style = {}, tag: Tag = 'span', m
   const elRef   = useRef(null)
   const editing = useRef(false)   // bloque les mises à jour React pendant la frappe
 
-  const phColor = (style.color === '#ffffff' || style.color === C.blanc)
-    ? 'rgba(255,255,255,0.45)' : '#aab0c8'
-  const phHTML = placeholder
-    ? `<span data-ph style="color:${phColor};font-style:italic;pointer-events:none;user-select:none">${placeholder}</span>`
-    : ''
-
-  /* Met à jour le DOM seulement quand on n'est pas en train d'éditer */
   const active = !!onSave
   useLayoutEffect(() => {
     if (!elRef.current || editing.current) return
     if (value?.trim()) {
       elRef.current.innerText = value
     } else {
-      elRef.current.innerHTML = phHTML
+      const phColor = (style.color === '#ffffff' || style.color === C.blanc)
+        ? 'rgba(255,255,255,0.45)' : '#aab0c8'
+      elRef.current.innerHTML = placeholder
+        ? `<span data-ph style="color:${phColor};font-style:italic;pointer-events:none;user-select:none">${placeholder}</span>`
+        : ''
     }
-  }, [value, phHTML, active])
+  }, [value, placeholder, style.color, active])
 
   if (!onSave) return <Tag style={style}>{value || ''}</Tag>
 

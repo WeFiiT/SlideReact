@@ -45,7 +45,7 @@ export default function Editeur() {
     if (!isEditing) return
     supabase.from('slides').select('*').eq('id', id).single()
       .then(({ data, error }) => {
-        if (error) { console.error(error); return }
+        if (error) { console.error(error); setLoading(false); return }
         setForm({
           ...EMPTY, ...data,
           contexte:     data.contexte?.length  ? data.contexte  : ['', '', ''],
@@ -113,7 +113,7 @@ export default function Editeur() {
     navigate(`/preview/${isEditing ? id : data.id}`)
   }
 
-  const isOwner = isEditing && user &&
+  const isOwner = !loading && isEditing && user &&
     normalizeName(form.prenom) === user.prenomNorm &&
     normalizeName(form.nom)    === user.nomNorm
 

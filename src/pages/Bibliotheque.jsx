@@ -350,7 +350,7 @@ export default function Bibliotheque() {
             {selectedIds.length} slide{selectedIds.length > 1 ? 's' : ''} sélectionnée{selectedIds.length > 1 ? 's' : ''}
           </span>
           <button
-            onClick={() => setSelectedIds(filteredSlides.map(s => s.id))}
+            onClick={() => setSelectedIds([...myFilteredSlides, ...othersFilteredSlides].map(s => s.id))}
             style={{ background: 'transparent', border: '1px solid #334155', color: '#cbd5e1', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
           >
             Tout sélectionner

@@ -80,6 +80,9 @@ export default function Preview() {
     return () => clearInterval(id)
   }, [])
 
+  // Cleanup pending debounced save on unmount
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current) }, [])
+
   const schedSave = (updated) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     setSaving(true)
@@ -128,6 +131,7 @@ export default function Preview() {
   }, [exportMenu])
 
   const captureCanvas = async () => {
+    if (!slideRef.current) return null
     await document.fonts.ready
     const wrapper = document.createElement('div')
     Object.assign(wrapper.style, {
@@ -151,6 +155,7 @@ export default function Preview() {
     setExporting(true)
     try {
       const canvas = await captureCanvas()
+      if (!canvas) return
       const filename = (slide?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
       const link = document.createElement('a')
       link.download = `${filename}.png`
@@ -164,6 +169,7 @@ export default function Preview() {
     setExporting(true)
     try {
       const canvas = await captureCanvas()
+      if (!canvas) return
       const imgData = canvas.toDataURL('image/png')
       // A4 landscape in mm: 297 × 210 — slide is 16:9 so we fit to width
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 167.0625] })
