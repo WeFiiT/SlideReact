@@ -116,8 +116,9 @@ export default function Editeur() {
 
   const handleValidate = async () => {
     setValidating(true)
-    await supabase.from('slides').update({ validated: true }).eq('id', id)
-    setForm(f => ({ ...f, validated: true }))
+    const next = !form.validated
+    await supabase.from('slides').update({ validated: next }).eq('id', id)
+    setForm(f => ({ ...f, validated: next }))
     setValidating(false)
     setConfirmValidate(false)
   }
@@ -134,13 +135,13 @@ export default function Editeur() {
         )}
         <button onClick={() => navigate('/')} style={toolBtn('#334155')}>Bibliothèque</button>
         <div style={{ flex: 1 }} />
-        {isOwner && !form.validated && (
-          <button onClick={() => setConfirmValidate(true)} style={toolBtn('#16a34a')}>
-            ✓ Valider la slide
+        {isOwner && (
+          <button
+            onClick={() => setConfirmValidate(true)}
+            style={toolBtn(form.validated ? '#92521A' : '#16a34a')}
+          >
+            {form.validated ? 'Retirer la validation' : '✓ Valider la slide'}
           </button>
-        )}
-        {form.validated && (
-          <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700, padding: '0 8px' }}>✓ Slide validée</span>
         )}
         <button onClick={handleSave} disabled={saving} style={toolBtn('#f08a2a')}>
           {saving ? 'Sauvegarde…' : '✓ Sauvegarder'}
@@ -151,15 +152,19 @@ export default function Editeur() {
       {confirmValidate && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-            <div style={{ fontSize: 20, marginBottom: 10 }}>✅</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 8 }}>Valider cette slide ?</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 8 }}>
+              {form.validated ? 'Retirer la validation ?' : 'Valider cette slide ?'}
+            </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
-              Votre slide <strong>« {form.card_titre || form.titre || 'Sans titre'} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et disponible pour un envoi potentiel à des clients.
+              {form.validated
+                ? <>La slide <strong>« {form.card_titre || form.titre || 'Sans titre'} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
+                : <>La slide <strong>« {form.card_titre || form.titre || 'Sans titre'} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et disponible pour un envoi potentiel à des clients.</>
+              }
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={handleValidate} disabled={validating}
-                style={{ flex: 1, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: validating ? 'default' : 'pointer', opacity: validating ? 0.7 : 1 }}>
-                {validating ? 'Validation…' : '✓ Confirmer la validation'}
+                style={{ flex: 1, background: form.validated ? '#92521A' : '#16a34a', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: validating ? 'default' : 'pointer', opacity: validating ? 0.7 : 1 }}>
+                {validating ? '…' : form.validated ? 'Retirer la validation' : 'Confirmer la validation'}
               </button>
               <button onClick={() => setConfirmValidate(false)}
                 style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
