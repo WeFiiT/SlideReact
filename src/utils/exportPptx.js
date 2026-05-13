@@ -204,10 +204,10 @@ async function buildSlide(pptx, data) {
   // ── TAGS (y=278, h=30) ─────────────────────────────────────────────────
   let tagX = PAD
   tgs.forEach(tag => {
-    const tw = Math.min(tag.length * 7.5 + 28, 190)
+    const tw = Math.min(tag.length * 9 + 36, 220)
     rect(s, tagX, 278, tw, 27, COL.lav)
     txt(s, tag, tagX, 278, tw, 27, {
-      color: COL.navy2, size: 9, bold: true, align: 'center', valign: 'middle',
+      color: COL.navy2, size: 9, bold: true, align: 'center', valign: 'middle', wrap: false,
     })
     tagX += tw + 8
   })
@@ -218,10 +218,10 @@ async function buildSlide(pptx, data) {
     bullet(s, line, PAD + 18, 348 + i * 37, L_W - 36, 34, { size: 10 })
   )
 
-  // ── ENJEUX (boxed, y=476, h=182) ──────────────────────────────────────
-  section(s, 'Les enjeux clés', PAD, 476, L_W, 182)
+  // ── ENJEUX (boxed, y=476, h=174) — stays above footer at y=653 ────────
+  section(s, 'Les enjeux clés', PAD, 476, L_W, 174)
   enj.forEach((line, i) =>
-    bullet(s, line, PAD + 18, 506 + i * 48, L_W - 36, 44, { size: 10 })
+    bullet(s, line, PAD + 18, 505 + i * 47, L_W - 36, 43, { size: 10 })
   )
 
   // ── RIGHT COLUMN ──────────────────────────────────────────────────────
@@ -245,22 +245,22 @@ async function buildSlide(pptx, data) {
   // Divider under logo
   rect(s, R_X, 238, R_W, 1, COL.divider)
 
-  // ── NOTRE IMPACT (boxed, centered orange tab, y=244, h=182) ───────────
-  section(s, 'Notre impact', R_X, 244, R_W, 182, { centered: true, orange: true })
+  // ── NOTRE IMPACT (boxed, centered orange tab, y=244, h=196) ───────────
+  section(s, 'Notre impact', R_X, 244, R_W, 196, { centered: true, orange: true })
   imp.forEach((line, i) =>
-    bullet(s, line, R_X + 10, 274 + i * 48, R_W - 20, 44,
+    bullet(s, line, R_X + 10, 275 + i * 52, R_W - 20, 48,
       { size: 9.5, bold: true })
   )
 
-  // ── MÉTRIQUES (3 cards, starts at y=436) ──────────────────────────────
-  txt(s, 'Métriques clés', R_X, 430, R_W, 16, {
+  // ── MÉTRIQUES (3 cards, starts at y=446) ──────────────────────────────
+  txt(s, 'Métriques clés', R_X, 446, R_W, 16, {
     color: COL.lbl, size: 8, bold: true, align: 'center', charSpacing: 0.5,
   })
 
-  const CARD_H = 42
+  const CARD_H = 50
   ;[0, 1, 2].forEach(i => {
     if (!mC[i] && !mL[i]) return
-    const cy = 450 + i * (CARD_H + 5)
+    const cy = 466 + i * (CARD_H + 6)
 
     rect(s, R_X,     cy, R_W,  CARD_H, COL.cream)  // card background
     rect(s, R_X,     cy,   3,  CARD_H, COL.orange)  // orange left accent
@@ -284,7 +284,7 @@ async function buildSlide(pptx, data) {
 
 export async function buildNativePptx(slides) {
   const pptx    = new PptxGenJS()
-  pptx.layout   = 'LAYOUT_WIDE'   // 10" × 5.625"
+  pptx.layout   = 'LAYOUT_16x9'   // 10" × 5.625" — matches PX = 10/1280
 
   for (const slide of slides) {
     await buildSlide(pptx, slide)
