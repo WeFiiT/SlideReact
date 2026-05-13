@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { TYPES, TYPE_COLORS } from '../constants'
+import { TYPES, TYPE_COLORS, normalizeName } from '../constants'
+import { getUser } from './Login'
 
 const EMPTY = {
   titre: '',
@@ -27,11 +28,15 @@ export default function Editeur() {
   const isEditing = Boolean(id)
   const fileInputRef = useRef(null)
 
-  const [form, setForm]           = useState(EMPTY)
-  const [loading, setLoading]     = useState(isEditing)
-  const [saving, setSaving]       = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const user = getUser()
+
+  const [form, setForm]               = useState(EMPTY)
+  const [loading, setLoading]         = useState(isEditing)
+  const [saving, setSaving]           = useState(false)
+  const [uploading, setUploading]     = useState(false)
   const [uploadError, setUploadError] = useState(null)
+  const [confirmValidate, setConfirmValidate] = useState(false)
+  const [validating, setValidating]   = useState(false)
 
   useEffect(() => {
     if (!isEditing) return
@@ -105,6 +110,18 @@ export default function Editeur() {
     navigate(`/preview/${isEditing ? id : data.id}`)
   }
 
+  const isOwner = isEditing && user &&
+    normalizeName(form.prenom) === user.prenomNorm &&
+    normalizeName(form.nom)    === user.nomNorm
+
+  const handleValidate = async () => {
+    setValidating(true)
+    await supabase.from('slides').update({ validated: true }).eq('id', id)
+    setForm(f => ({ ...f, validated: true }))
+    setValidating(false)
+    setConfirmValidate(false)
+  }
+
   if (loading) return <p style={{ padding: 32, color: '#64748b' }}>Chargement…</p>
 
   return (
@@ -117,10 +134,41 @@ export default function Editeur() {
         )}
         <button onClick={() => navigate('/')} style={toolBtn('#334155')}>Bibliothèque</button>
         <div style={{ flex: 1 }} />
+        {isOwner && !form.validated && (
+          <button onClick={() => setConfirmValidate(true)} style={toolBtn('#16a34a')}>
+            ✓ Valider la slide
+          </button>
+        )}
+        {form.validated && (
+          <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700, padding: '0 8px' }}>✓ Slide validée</span>
+        )}
         <button onClick={handleSave} disabled={saving} style={toolBtn('#f08a2a')}>
           {saving ? 'Sauvegarde…' : '✓ Sauvegarder'}
         </button>
       </div>
+
+      {/* Modale de validation */}
+      {confirmValidate && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: 20, marginBottom: 10 }}>✅</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 8 }}>Valider cette slide ?</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
+              Votre slide <strong>« {form.card_titre || form.titre || 'Sans titre'} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et disponible pour un envoi potentiel à des clients.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={handleValidate} disabled={validating}
+                style={{ flex: 1, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: validating ? 'default' : 'pointer', opacity: validating ? 0.7 : 1 }}>
+                {validating ? 'Validation…' : '✓ Confirmer la validation'}
+              </button>
+              <button onClick={() => setConfirmValidate(false)}
+                style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ maxWidth: 820, margin: '0 auto', padding: '36px 24px 80px' }}>
         <h1 style={{ margin: '0 0 8px', color: '#002882', fontSize: 22, fontWeight: 800, fontFamily: "'Publica Play', Arial, sans-serif" }}>

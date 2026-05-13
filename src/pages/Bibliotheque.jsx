@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
-import { TYPES, TYPE_COLORS, computeStatus, STATUS_STYLES } from '../constants'
+import { TYPES, TYPE_COLORS, computeStatus, STATUS_STYLES, normalizeName } from '../constants'
 import { getUser, logout } from './Login'
 
 const DATE_OPTIONS = [
@@ -62,7 +62,8 @@ export default function Bibliotheque() {
       })
   }, [])
 
-  const handleDeleted = (id) => setSlides((prev) => prev.filter((s) => s.id !== id))
+  const handleDeleted   = (id) => setSlides(prev => prev.filter(s => s.id !== id))
+  const handleValidated = (id) => setSlides(prev => prev.map(s => s.id === id ? { ...s, validated: true } : s))
 
   /* Filtrage client-side */
   const filteredSlides = useMemo(() => {
@@ -92,8 +93,8 @@ export default function Bibliotheque() {
 
     if (mySlides && user) {
       result = result.filter(s =>
-        s.prenom?.toLowerCase() === user.prenom.toLowerCase() &&
-        s.nom?.toLowerCase()    === user.nom.toLowerCase()
+        normalizeName(s.prenom) === user.prenomNorm &&
+        normalizeName(s.nom)    === user.nomNorm
       )
     }
 
@@ -257,7 +258,9 @@ export default function Bibliotheque() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
             {filteredSlides.map(slide => (
               <SlideCard
-                key={slide.id} slide={slide} onDeleted={handleDeleted}
+                key={slide.id} slide={slide}
+                onDeleted={handleDeleted}
+                onValidated={handleValidated}
                 selectMode={selectMode}
                 selected={selectedIds.includes(slide.id)}
                 onSelect={toggleSelect}

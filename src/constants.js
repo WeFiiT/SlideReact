@@ -7,23 +7,14 @@ export const TYPE_COLORS = {
   'Coaching & Formation': '#f08a2a',
 }
 
-/* Slide "ready" si tous les champs clés sont remplis */
+/* Normalise un nom pour la comparaison : minuscules, sans espaces ni tirets */
+export function normalizeName(s) {
+  return s?.toLowerCase().replace(/[\s\-]/g, '') ?? ''
+}
+
+/* Slide "ready" uniquement si explicitement validée par le consultant */
 export function computeStatus(slide) {
-  const hasArr = (arr) => Array.isArray(arr) && arr.some(v => v?.trim())
-  const hasMet = [1, 2, 3].some(n =>
-    slide[`metrique_${n}_chiffre`]?.trim() && slide[`metrique_${n}_label`]?.trim()
-  )
-  return (
-    slide.titre?.trim() &&
-    slide.sous_titre?.trim() &&
-    hasArr(slide.contexte) &&
-    hasArr(slide.tags) &&
-    hasArr(slide.perimetre) &&
-    hasArr(slide.enjeux) &&
-    hasArr(slide.impact) &&
-    slide.logo_url?.trim() &&
-    hasMet
-  ) ? 'ready' : 'draft'
+  return slide.validated ? 'ready' : 'draft'
 }
 
 export const STATUS_STYLES = {

@@ -2,10 +2,25 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 function parseWefiiitEmail(email) {
-  const match = email.trim().toLowerCase().match(/^([a-z\-]+)\.([a-z\-]+)@wefiit\.com$/)
+  // prenom : peut contenir des tirets (Pierre-Louis)
+  // nom    : sans espaces ni tirets (Le Blevenec → leblevenec, Lablache-Combier → lablachecombier)
+  const match = email.trim().toLowerCase().match(/^([a-z][a-z-]*)\.([a-z]+)@wefiit\.com$/)
   if (!match) return null
-  const capitalize = (s) => s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-')
-  return { email: email.trim().toLowerCase(), prenom: capitalize(match[1]), nom: capitalize(match[2]) }
+
+  // Capitalise chaque segment séparé par un tiret
+  const capitalizeHyphen = (s) =>
+    s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-')
+
+  const prenomRaw = match[1]   // ex: "pierre-louis"
+  const nomRaw    = match[2]   // ex: "leblevenec" (déjà normalisé dans l'email)
+
+  return {
+    email:     email.trim().toLowerCase(),
+    prenom:    capitalizeHyphen(prenomRaw),            // "Pierre-Louis"
+    nom:       nomRaw.charAt(0).toUpperCase() + nomRaw.slice(1), // "Leblevenec"
+    prenomNorm: prenomRaw.replace(/-/g, ''),           // "pierrelouis"
+    nomNorm:   nomRaw,                                 // "leblevenec"
+  }
 }
 
 export function getUser() {
