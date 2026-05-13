@@ -392,7 +392,7 @@ export default function Preview() {
           )}
         </div>
 
-        {!textEditMode ? (
+        {railMode !== 'comments' && (!textEditMode ? (
           <button onClick={() => setTextEditMode(true)} style={styles.btnSecondary}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 5V3.5h8V5M8 3.5v9M6 12.5h4"/>
@@ -403,7 +403,7 @@ export default function Preview() {
           <button onClick={() => setTextEditMode(false)} style={{ ...styles.btnSecondary, color: '#3EAE6E', borderColor: '#3EAE6E' }}>
             ✓ Terminer
           </button>
-        )}
+        ))}
 
         <button
           onClick={() => setFullscreen(true)}
