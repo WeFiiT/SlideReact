@@ -54,12 +54,14 @@ export default function Login() {
     }}>
       <div style={{ background: '#fff', borderRadius: 16, padding: '48px 40px', width: 400, boxShadow: '0 8px 40px rgba(0,0,0,0.10)' }}>
 
-        <img src="/logos/header.svg" alt="WeFiiT" style={{ width: '100%', borderRadius: 8, marginBottom: 32, display: 'block' }} />
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+          <img src="/logos/wefiit-badge.svg" alt="WeFiiT" style={{ width: 72, height: 72 }} />
+        </div>
 
-        <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800, color: '#002882', fontFamily: "'Publica Play', Arial, sans-serif" }}>
+        <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800, color: '#002882', fontFamily: "'Publica Play', Arial, sans-serif", textAlign: 'center' }}>
           Bienvenue
         </h1>
-        <p style={{ margin: '0 0 28px', fontSize: 14, color: '#64748b' }}>
+        <p style={{ margin: '0 0 28px', fontSize: 14, color: '#64748b', textAlign: 'center' }}>
           Connecte-toi avec ton adresse WeFiiT pour accéder à tes slides.
         </p>
 

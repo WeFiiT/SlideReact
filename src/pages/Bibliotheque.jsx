@@ -18,7 +18,6 @@ export default function Bibliotheque() {
 
   const [slides, setSlides]       = useState([])
   const [loading, setLoading]     = useState(true)
-  const [mySlides, setMySlides]   = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [creating, setCreating]   = useState(false)
   const [draft, setDraft]         = useState({ prenom: '', nom: '', titre: '', type_mission: '' })
@@ -91,15 +90,22 @@ export default function Bibliotheque() {
       result = result.filter(s => computeStatus(s) === statusFilter)
     }
 
-    if (mySlides && user) {
-      result = result.filter(s =>
-        normalizeName(s.prenom) === user.prenomNorm &&
-        normalizeName(s.nom)    === user.nomNorm
-      )
-    }
-
     return result
-  }, [slides, search, dateFilter, typeFilter, statusFilter, mySlides, user])
+  }, [slides, search, dateFilter, typeFilter, statusFilter])
+
+  const myFilteredSlides = useMemo(() =>
+    user ? filteredSlides.filter(s =>
+      normalizeName(s.prenom) === user.prenomNorm &&
+      normalizeName(s.nom)    === user.nomNorm
+    ) : []
+  , [filteredSlides, user])
+
+  const othersFilteredSlides = useMemo(() =>
+    user ? filteredSlides.filter(s =>
+      !(normalizeName(s.prenom) === user.prenomNorm &&
+        normalizeName(s.nom)    === user.nomNorm)
+    ) : filteredSlides
+  , [filteredSlides, user])
 
   const canCreate = draft.prenom.trim() && draft.nom.trim() && draft.titre.trim()
 
@@ -151,22 +157,12 @@ export default function Bibliotheque() {
 
           {/* Profil utilisateur */}
           <div style={{ width: 1, height: 28, background: '#e2e8f0', margin: '0 4px' }} />
-          <button
-            onClick={() => setMySlides(v => !v)}
-            title={`Filtrer mes slides (${user?.prenom} ${user?.nom})`}
-            style={{
-              background: mySlides ? '#002882' : '#f1f5f9',
-              color: mySlides ? '#fff' : '#475569',
-              border: 'none', borderRadius: 20, padding: '6px 14px',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}
-          >
-            <span style={{ width: 24, height: 24, borderRadius: '50%', background: mySlides ? 'rgba(255,255,255,0.25)' : '#002882', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 10px 4px 4px', borderRadius: 20, background: '#f1f5f9' }}>
+            <span style={{ width: 26, height: 26, borderRadius: '50%', background: '#002882', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
               {user?.prenom?.[0]}{user?.nom?.[0]}
             </span>
-            {mySlides ? 'Mes slides' : `${user?.prenom} ${user?.nom}`}
-          </button>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>{user?.prenom} {user?.nom}</span>
+          </div>
           <button
             onClick={() => { logout(); navigate('/login') }}
             title="Se déconnecter"
@@ -246,31 +242,52 @@ export default function Bibliotheque() {
         )}
       </div>
 
-      {/* ── Grille ── */}
+      {/* ── Sections ── */}
       {loading ? (
         <p style={{ color: '#64748b' }}>Chargement…</p>
-      ) : filteredSlides.length === 0 ? (
-        <p style={{ color: '#64748b' }}>
-          {slides.length === 0 ? 'Aucune slide. Créez-en une !' : 'Aucun résultat pour ces filtres.'}
-        </p>
       ) : (
         <>
-          <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8' }}>
-            {filteredSlides.length} slide{filteredSlides.length > 1 ? 's' : ''}
-            {hasActiveFilters ? ' trouvée' + (filteredSlides.length > 1 ? 's' : '') : ''}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {filteredSlides.map(slide => (
-              <SlideCard
-                key={slide.id} slide={slide}
-                onDeleted={handleDeleted}
-                onValidated={handleValidated}
-                selectMode={selectMode}
-                selected={selectedIds.includes(slide.id)}
-                onSelect={toggleSelect}
-              />
-            ))}
-          </div>
+          {/* Mes slides */}
+          <SectionHeader title="Mes slides" count={myFilteredSlides.length} />
+          {myFilteredSlides.length === 0 ? (
+            <p style={{ color: '#94a3b8', fontSize: 13, marginBottom: 36 }}>
+              {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune slide pour l\'instant. Créez-en une !'}
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 40 }}>
+              {myFilteredSlides.map(slide => (
+                <SlideCard
+                  key={slide.id} slide={slide}
+                  onDeleted={handleDeleted}
+                  onValidated={handleValidated}
+                  selectMode={selectMode}
+                  selected={selectedIds.includes(slide.id)}
+                  onSelect={toggleSelect}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Autres slides */}
+          <SectionHeader title="Autres slides" count={othersFilteredSlides.length} />
+          {othersFilteredSlides.length === 0 ? (
+            <p style={{ color: '#94a3b8', fontSize: 13 }}>
+              {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune autre slide.'}
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {othersFilteredSlides.map(slide => (
+                <SlideCard
+                  key={slide.id} slide={slide}
+                  onDeleted={handleDeleted}
+                  onValidated={handleValidated}
+                  selectMode={selectMode}
+                  selected={selectedIds.includes(slide.id)}
+                  onSelect={toggleSelect}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
 
@@ -416,7 +433,19 @@ export default function Bibliotheque() {
   )
 }
 
-/* ── Helpers styles ── */
+/* ── Helpers ── */
+
+function SectionHeader({ title, count }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1E2C' }}>{title}</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color: '#6E7385', background: '#F0EEE9', borderRadius: 20, padding: '2px 9px' }}>
+        {count}
+      </span>
+      <div style={{ flex: 1, height: 1, background: '#E8E6E1' }} />
+    </div>
+  )
+}
 
 function typePill(type, activeType) {
   const isActive = type === null ? activeType === null : activeType === type
