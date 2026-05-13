@@ -4,7 +4,8 @@ import html2canvas from 'html2canvas'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 
-const TOOLBAR_H = 56
+const TOPBAR_H = 56
+const RAIL_W   = 80
 
 function loadLayout(id) {
   try {
@@ -48,7 +49,10 @@ export default function Preview() {
 
   useEffect(() => {
     const upd = () => {
-      const s = Math.min(window.innerWidth / 1280, (window.innerHeight - TOOLBAR_H) / 720)
+      const s = Math.min(
+        (window.innerWidth - RAIL_W) / 1280,
+        (window.innerHeight - TOPBAR_H) / 720,
+      )
       setScale(s)
     }
     upd()
@@ -66,7 +70,6 @@ export default function Preview() {
     if (editParam && slide && !loading) setTextEditMode(true)
   }, [editParam, slide, loading])
 
-  /* Sauvegarde Supabase debouncée (800ms) */
   const schedSave = (updated) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     setSaving(true)
@@ -129,7 +132,6 @@ export default function Preview() {
       document.body.removeChild(wrapper)
 
       const filename = (slide?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
-
       const link = document.createElement('a')
       link.download = `${filename}.png`
       link.href = canvas.toDataURL('image/png')
@@ -137,7 +139,6 @@ export default function Preview() {
     } finally { setExporting(false) }
   }
 
-  /* Si l'utilisateur est en mode édition, on quitte d'abord puis on exporte */
   const handleExport = () => {
     if (textEditMode) {
       setTextEditMode(false)
@@ -147,115 +148,211 @@ export default function Preview() {
     }
   }
 
-  if (loading) return <p style={{ padding: 32, color: '#64748b' }}>Chargement…</p>
+  if (loading) return <p style={{ padding: 32, color: '#6E7385' }}>Chargement…</p>
   if (!slide)  return <p style={{ padding: 32, color: '#dc2626' }}>Slide introuvable.</p>
 
+  const slideTitle = slide.card_titre || slide.titre || 'Sans titre'
+
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0f172a' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif', color: '#1A1E2C', background: '#fff' }}>
 
-      {/* ── Toolbar ── */}
-      <div style={{ height: TOOLBAR_H, display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', background: '#1e293b', flexShrink: 0 }}>
+      {/* ── Top bar ── */}
+      <header style={styles.topbar}>
+        <button onClick={() => navigate('/')} style={styles.btnBack}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 4 6 8l4 4"/>
+          </svg>
+          Bibliothèque
+        </button>
 
-        {/* Navigation */}
-        <button onClick={() => navigate('/')} style={navBtn}>← Biblio</button>
-        <button onClick={() => navigate(`/editeur/${id}`)} style={navBtn}>Formulaire</button>
+        <div style={styles.divider} />
 
-        <div style={{ width: 1, height: 24, background: '#334155', margin: '0 4px' }} />
+        <span style={styles.title}>{slideTitle}</span>
 
-        {/* Edition */}
-        {!textEditMode ? (
-          <button onClick={() => setTextEditMode(true)} style={editBtn}>
-            Éditer le texte
-          </button>
-        ) : (
-          <>
-            <button onClick={() => setTextEditMode(false)} style={doneBtn}>
-              ✓ Terminer
-            </button>
-            <span style={{ fontSize: 12, color: saving ? '#f08a2a' : '#4ade80', fontWeight: 500 }}>
-              {saving ? 'Sauvegarde…' : '✓ Sauvegardé'}
-            </span>
-          </>
-        )}
+        <span style={styles.savedStatus}>
+          {saving ? (
+            <span style={{ color: '#E97433' }}>Sauvegarde…</span>
+          ) : textEditMode ? (
+            <>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#3EAE6E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8" cy="8" r="6"/>
+                <path d="M5.5 8l2 2 3-3.5"/>
+              </svg>
+              Sauvegardé
+            </>
+          ) : null}
+        </span>
 
         <div style={{ flex: 1 }} />
 
-        {/* Export */}
-        <button onClick={handleExport} disabled={exporting} style={exportBtn(exporting)}>
-          {exporting ? 'Export en cours…' : '↓ Exporter PNG'}
-        </button>
-      </div>
+        {!textEditMode ? (
+          <button onClick={() => setTextEditMode(true)} style={styles.btnSecondary}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 5V3.5h8V5M8 3.5v9M6 12.5h4"/>
+            </svg>
+            Éditer le texte
+          </button>
+        ) : (
+          <button onClick={() => setTextEditMode(false)} style={{ ...styles.btnSecondary, color: '#3EAE6E', borderColor: '#3EAE6E' }}>
+            ✓ Terminer
+          </button>
+        )}
 
-      {/* ── Slide ── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        <div style={{ width: 1280 * scale, height: 720 * scale, position: 'relative', flexShrink: 0 }}>
-          <div style={{ width: 1280, height: 720, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }}>
-            <div ref={slideRef}>
-              <SlideTemplate
-                {...slide}
-                editMode={false}
-                textEditMode={textEditMode}
-                layout={layout}
-                onLayoutChange={() => {}}
-                onTextChange={handleTextChange}
-              />
+        <button onClick={handleExport} disabled={exporting} style={styles.btnPrimary(exporting)}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 10V2M5 5l3-3 3 3"/>
+            <path d="M3 10v3a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3"/>
+          </svg>
+          {exporting ? 'Export…' : 'Exporter'}
+        </button>
+      </header>
+
+      {/* ── Body ── */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+
+        {/* Left rail */}
+        <nav style={styles.rail} aria-label="Modes">
+          <button style={styles.railItem(true)} aria-pressed="true">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2.5" y="4" width="15" height="11" rx="1.5"/>
+              <path d="M2.5 7h15"/>
+            </svg>
+            <span style={styles.railLabel}>Slide</span>
+          </button>
+
+          <button onClick={() => navigate(`/editeur/${id}`)} style={styles.railItem(false)} aria-pressed="false">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="14" height="14" rx="2"/>
+              <path d="M6 7h8M6 10h8M6 13h5"/>
+            </svg>
+            <span style={styles.railLabel}>Formulaire</span>
+          </button>
+        </nav>
+
+        {/* Workspace */}
+        <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#fff' }}>
+          <div style={{ width: 1280 * scale, height: 720 * scale, position: 'relative', flexShrink: 0 }}>
+            <div style={{ width: 1280, height: 720, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }}>
+              <div ref={slideRef}>
+                <SlideTemplate
+                  {...slide}
+                  editMode={false}
+                  textEditMode={textEditMode}
+                  layout={layout}
+                  onLayoutChange={() => {}}
+                  onTextChange={handleTextChange}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        </main>
       </div>
-
     </div>
   )
 }
 
-/* ── Styles toolbar ── */
-const navBtn = {
-  background: 'transparent',
-  color: '#94a3b8',
-  border: '1px solid #334155',
-  borderRadius: 6,
-  padding: '6px 13px',
-  fontSize: 13,
-  fontWeight: 500,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-}
-
-const editBtn = {
-  background: '#1f3fa3',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 6,
-  padding: '7px 16px',
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-}
-
-const doneBtn = {
-  background: '#16a34a',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 6,
-  padding: '7px 16px',
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-}
-
-function exportBtn(disabled) {
-  return {
-    background: disabled ? '#475569' : '#f08a2a',
+const styles = {
+  topbar: {
+    height: TOPBAR_H,
+    background: '#fff',
+    borderBottom: '1px solid #E8E6E1',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0 16px',
+    gap: 12,
+    flexShrink: 0,
+  },
+  divider: {
+    width: 1,
+    height: 22,
+    background: '#E8E6E1',
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: '#1A1E2C',
+  },
+  savedStatus: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    fontSize: 12,
+    color: '#6E7385',
+  },
+  btnBack: {
+    height: 32,
+    padding: '0 10px 0 8px',
+    background: 'transparent',
+    color: '#1A1E2C',
+    border: 'none',
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontFamily: 'inherit',
+  },
+  btnSecondary: {
+    height: 34,
+    padding: '0 14px',
+    background: '#fff',
+    color: '#1A1E2C',
+    border: '1px solid #E8E6E1',
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 7,
+    fontFamily: 'inherit',
+  },
+  btnPrimary: (disabled) => ({
+    height: 34,
+    padding: '0 18px',
+    background: disabled ? '#c9a882' : '#E97433',
     color: '#fff',
     border: 'none',
-    borderRadius: 6,
-    padding: '7px 16px',
+    borderRadius: 8,
     fontSize: 13,
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: disabled ? 'default' : 'pointer',
-    whiteSpace: 'nowrap',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 7,
+    fontFamily: 'inherit',
     opacity: disabled ? 0.7 : 1,
-  }
+  }),
+  rail: {
+    width: RAIL_W,
+    background: '#fff',
+    borderRight: '1px solid #E8E6E1',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '14px 0',
+    gap: 4,
+    flexShrink: 0,
+  },
+  railItem: (active) => ({
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    background: active ? '#EEF1FA' : 'transparent',
+    color: active ? '#0E2A6B' : '#6E7385',
+    border: 'none',
+    cursor: active ? 'default' : 'pointer',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    fontFamily: 'inherit',
+  }),
+  railLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+  },
 }
