@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
-import { TYPES, TYPE_COLORS, computeStatus, STATUS_STYLES, normalizeName } from '../constants'
+import { TYPES, TYPE_COLORS, computeStatus, normalizeName } from '../constants'
 import { getUser, logout } from './Login'
 
 const DATE_OPTIONS = [
@@ -137,109 +137,151 @@ export default function Bibliotheque() {
 
   const hasActiveFilters = search || dateFilter !== 'all' || typeFilter || statusFilter
 
+  const typeCounts = useMemo(() => {
+    const counts = { all: slides.length }
+    TYPES.forEach(t => { counts[t] = slides.filter(s => s.type_mission === t).length })
+    return counts
+  }, [slides])
+
+  const statusCounts = useMemo(() => ({
+    ready: slides.filter(s => computeStatus(s) === 'ready').length,
+    draft: slides.filter(s => computeStatus(s) === 'draft').length,
+  }), [slides])
+
   return (
-    <div style={{ minHeight: '100vh', background: '#FBFAF7' }}>
-    <div style={{ maxWidth: 880, margin: '0 auto', padding: '40px 24px 80px' }}>
+    <div style={{ minHeight: '100vh', background: '#FBFAF7', fontFamily: 'Inter, system-ui, sans-serif' }}>
 
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ color: '#0E2A6B', fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.2px', fontFamily: "'Geomanist', Arial, sans-serif" }}>
-          Bibliothèque
-        </h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => { setSelectMode(v => !v); setSelectedIds([]) }}
-            style={{ ...ctaBtn, background: selectMode ? '#334155' : '#f1f5f9', color: selectMode ? '#fff' : '#475569' }}
-          >
-            {selectMode ? '✕ Annuler' : 'Sélectionner'}
-          </button>
-          {!selectMode && <button onClick={openModal} style={ctaBtn}>+ Créer une slide</button>}
-
-          {/* Profil utilisateur */}
-          <div style={{ width: 1, height: 28, background: '#e2e8f0', margin: '0 4px' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 10px 4px 4px', borderRadius: 20, background: '#f1f5f9' }}>
-            <span style={{ width: 26, height: 26, borderRadius: '50%', background: '#002882', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
-              {user?.prenom?.[0]}{user?.nom?.[0]}
-            </span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>{user?.prenom} {user?.nom}</span>
-          </div>
-          <button
-            onClick={() => { logout(); navigate('/login') }}
-            title="Se déconnecter"
-            style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', padding: '5px 7px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', transition: 'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#475569' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#94a3b8' }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
+      {/* ── Brand bar ── */}
+      <div style={{ height: 56, background: '#fff', borderBottom: '1px solid #E8E6E1', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16 }}>
+        <WefiitLogoSVG size={32} />
+        <span style={{ fontSize: 15, fontWeight: 700, color: '#0E2A6B', letterSpacing: -0.2 }}>WeFiiT</span>
+        <div style={{ width: 1, height: 18, background: '#E8E6E1', margin: '0 4px' }} />
+        <span style={{ fontSize: 13, color: '#0E2A6B', fontWeight: 600 }}>Bibliothèque</span>
+        <div style={{ flex: 1 }} />
+        {/* User chip */}
+        <div style={{ height: 40, padding: '0 14px 0 6px', background: '#fff', border: '1px solid #E8E6E1', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#DCE3F2', color: '#0E2A6B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+            {user?.prenom?.[0]}{user?.nom?.[0]}
+          </span>
+          <span style={{ fontSize: 13, color: '#1A1E2C', fontWeight: 600 }}>{user?.prenom} {user?.nom}</span>
         </div>
+        <button
+          onClick={() => { logout(); navigate('/login') }}
+          title="Se déconnecter"
+          style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #E8E6E1', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6E7385' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#F3F1EC' }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#fff' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 3H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h5" />
+            <path d="M11 5l3 3-3 3M14 8H7" />
+          </svg>
+        </button>
       </div>
 
-      {/* ── Toolbar recherche + filtres ── */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher dans la bibliothèque…"
-          style={{ flex: 1, height: 38, border: '1px solid #E8E6E1', borderRadius: 10, padding: '0 14px', fontSize: 14, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', background: '#fff', color: '#1A1E2C' }}
-          onFocus={e => (e.target.style.borderColor = '#0E2A6B')}
-          onBlur={e => (e.target.style.borderColor = '#E8E6E1')}
-        />
+    <div style={{ maxWidth: 880, margin: '0 auto', padding: '28px 24px 80px' }}>
+
+      {/* ── Title + actions ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0E2A6B', margin: 0, letterSpacing: -0.4, fontFamily: "'Geomanist', Arial, sans-serif" }}>Bibliothèque</h1>
+          <span style={{ fontSize: 13, color: '#6E7385' }}>{slides.length} slide{slides.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div style={{ flex: 1 }} />
+        {/* Search */}
+        <div style={{ height: 38, background: '#fff', border: '1px solid #E8E6E1', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 12px', width: 260 }}>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round"><circle cx="7" cy="7" r="4.5" /><path d="M13 13l-2.5-2.5" /></svg>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher…"
+            style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: '#1A1E2C', background: 'transparent', fontFamily: 'inherit' }}
+          />
+        </div>
+        <button
+          onClick={() => { setSelectMode(v => !v); setSelectedIds([]) }}
+          style={{ height: 38, padding: '0 16px', background: selectMode ? '#1A1E2C' : '#fff', color: selectMode ? '#fff' : '#1A1E2C', border: '1px solid #E8E6E1', borderRadius: 10, fontSize: 14, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          {selectMode
+            ? '✕ Annuler'
+            : <><span style={{ width: 14, height: 14, border: '1.5px solid #6E7385', borderRadius: 4, display: 'inline-block' }} />Sélectionner</>
+          }
+        </button>
+        {!selectMode && (
+          <button onClick={openModal} style={{ height: 38, padding: '0 16px', background: '#E97433', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M8 3v10M3 8h10" /></svg>
+            Créer une slide
+          </button>
+        )}
+      </div>
+
+      {/* ── Filtres ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
+        {/* Type — segmented control with counts */}
+        <div style={{ display: 'inline-flex', background: '#F3F1EC', borderRadius: 10, padding: 4, gap: 2 }}>
+          {[{ k: null, label: 'Tous' }, ...TYPES.map(t => ({ k: t, label: t }))].map(({ k, label }) => {
+            const active = typeFilter === k
+            const count = k === null ? null : typeCounts[k]
+            return (
+              <button key={String(k)} onClick={() => setTypeFilter(k)}
+                style={{ height: 30, padding: '0 10px', background: active ? '#fff' : 'transparent', color: active ? '#0E2A6B' : '#6E7385', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: active ? '0 1px 2px rgba(20,28,60,0.07)' : 'none', whiteSpace: 'nowrap' }}>
+                {label}
+                {count != null && (
+                  <span style={{ fontSize: 11, fontWeight: 700, background: active ? '#EEF1FA' : 'rgba(20,28,60,0.07)', color: active ? '#0E2A6B' : '#6E7385', padding: '1px 6px', borderRadius: 999, minWidth: 20, textAlign: 'center' }}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        <div style={{ width: 1, height: 22, background: '#E8E6E1' }} />
+
+        {/* Statut — segmented control with counts */}
+        <div style={{ display: 'inline-flex', background: '#F3F1EC', borderRadius: 10, padding: 4, gap: 2 }}>
+          {[
+            { k: null,    label: 'Tous',  dot: null },
+            { k: 'ready', label: 'Ready', dot: '#3EAE6E' },
+            { k: 'draft', label: 'Draft', dot: '#B8BCC8' },
+          ].map(({ k, label, dot }) => {
+            const active = statusFilter === k
+            const count = k === null ? null : statusCounts[k]
+            return (
+              <button key={String(k)} onClick={() => setStatusFilter(k)}
+                style={{ height: 30, padding: '0 10px', background: active ? '#fff' : 'transparent', color: active ? '#0E2A6B' : '#6E7385', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: active ? '0 1px 2px rgba(20,28,60,0.07)' : 'none' }}>
+                {dot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
+                {label}
+                {count != null && (
+                  <span style={{ fontSize: 11, fontWeight: 700, background: active ? '#EEF1FA' : 'rgba(20,28,60,0.07)', color: active ? '#0E2A6B' : '#6E7385', padding: '1px 6px', borderRadius: 999, minWidth: 20, textAlign: 'center' }}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Date */}
         <select
           value={dateFilter}
           onChange={e => setDateFilter(e.target.value)}
-          style={{ height: 38, border: '1px solid #E8E6E1', borderRadius: 10, padding: '0 12px', fontSize: 14, color: '#1A1E2C', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}
+          style={{ height: 34, border: '1px solid #E8E6E1', borderRadius: 999, padding: '0 12px', fontSize: 13, color: '#1A1E2C', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit', fontWeight: 500 }}
         >
           {DATE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-      </div>
-
-      {/* ── Filtres type de mission + statut ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, marginRight: 4 }}>Type :</span>
-        <button onClick={() => setTypeFilter(null)} style={typePill(null, typeFilter)}>Tous</button>
-        {TYPES.map(t => (
-          <button key={t} onClick={() => setTypeFilter(prev => prev === t ? null : t)} style={typePill(t, typeFilter)}>
-            {t}
-          </button>
-        ))}
-
-        <div style={{ width: 1, height: 18, background: '#e2e8f0', margin: '0 4px' }} />
-
-        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, marginRight: 4 }}>Statut :</span>
-        {['ready', 'draft'].map(s => {
-          const st = STATUS_STYLES[s]
-          const active = statusFilter === s
-          return (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(prev => prev === s ? null : s)}
-              style={{
-                background: active ? st.bg : '#f1f5f9',
-                color: active ? st.color : '#64748b',
-                border: active ? `1.5px solid ${st.color}` : '1.5px solid transparent',
-                borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
-              }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? st.dot : '#94a3b8', display: 'inline-block' }} />
-              {st.label}
-            </button>
-          )
-        })}
 
         {hasActiveFilters && (
           <button
             onClick={() => { setSearch(''); setDateFilter('all'); setTypeFilter(null); setStatusFilter(null) }}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 12, cursor: 'pointer', marginLeft: 4, textDecoration: 'underline' }}
+            style={{ background: 'none', border: 'none', color: '#6E7385', fontSize: 12, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
           >
             Réinitialiser
           </button>
         )}
+
       </div>
 
       {/* ── Sections ── */}
@@ -435,6 +477,16 @@ export default function Bibliotheque() {
 
 /* ── Helpers ── */
 
+function WefiitLogoSVG({ size = 32 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 500 500" style={{ borderRadius: size * 0.18, display: 'block', flexShrink: 0 }}>
+      <rect width="500" height="500" fill="#0E2A6B" />
+      <circle cx="378.97" cy="326.6" r="23.4" fill="#E97433" />
+      <path d="m303.62,275.75c0,22.9-10.94,35.51-30.8,35.51s-30.8-12.61-30.8-35.51v-125.75h-41.39v125.75c0,22.9-10.94,35.51-30.8,35.51s-30.8-12.61-30.8-35.51v-125.75h-41.39v125.75c0,46.49,25.78,74.25,68.95,74.25,24.12,0,42.98-9.58,54.74-27.74,11.66,17.91,30.97,27.74,54.73,27.74,43.18,0,68.95-27.76,68.95-74.25v-125.75h-41.39v125.75Z" fill="#fff" />
+    </svg>
+  )
+}
+
 function SectionHeader({ title, count }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
@@ -447,22 +499,6 @@ function SectionHeader({ title, count }) {
   )
 }
 
-function typePill(type, activeType) {
-  const isActive = type === null ? activeType === null : activeType === type
-  const color = type ? TYPE_COLORS[type] : '#475569'
-  return {
-    background: isActive ? color : '#f1f5f9',
-    color: isActive ? '#fff' : '#475569',
-    border: 'none',
-    borderRadius: 20,
-    padding: '5px 14px',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'all 0.15s',
-  }
-}
 
 const ctaBtn = {
   background: '#f08a2a',

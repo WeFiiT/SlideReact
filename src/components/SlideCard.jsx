@@ -121,20 +121,18 @@ export default function SlideCard({ slide, onDeleted, onValidated, selectMode = 
           gap: 16,
           boxShadow: hover ? '0 6px 16px rgba(20,28,60,0.06)' : 'none',
           transition: 'border-color .15s, box-shadow .15s',
-          cursor: selectMode ? 'pointer' : 'default',
+          cursor: 'pointer',
         }}
-        onClick={selectMode ? handleCardClick : undefined}
+        onClick={handleCardClick}
       >
 
         {/* ── Vignette ── */}
         <div
-          onClick={!selectMode ? handleCardClick : undefined}
           style={{
             width: THUMB_W, height: THUMB_H,
             flexShrink: 0, position: 'relative',
             overflow: 'hidden', borderRadius: 6,
             border: '1px solid #E8E6E1',
-            cursor: selectMode ? 'default' : 'pointer',
           }}
         >
           <div style={{ width: 1280, height: 720, transform: `scale(${THUMB_SC})`, transformOrigin: 'top left', pointerEvents: 'none' }}>
