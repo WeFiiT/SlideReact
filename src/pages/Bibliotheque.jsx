@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
 import { TYPES, TYPE_COLORS, computeStatus, STATUS_STYLES } from '../constants'
+import { getUser, logout } from './Login'
 
 const DATE_OPTIONS = [
   { label: 'Toutes les dates', value: 'all' },
@@ -13,8 +14,11 @@ const DATE_OPTIONS = [
 
 export default function Bibliotheque() {
   const navigate = useNavigate()
+  const user = getUser()
+
   const [slides, setSlides]       = useState([])
   const [loading, setLoading]     = useState(true)
+  const [mySlides, setMySlides]   = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [creating, setCreating]   = useState(false)
   const [draft, setDraft]         = useState({ prenom: '', nom: '', titre: '', type_mission: '' })
@@ -86,8 +90,15 @@ export default function Bibliotheque() {
       result = result.filter(s => computeStatus(s) === statusFilter)
     }
 
+    if (mySlides && user) {
+      result = result.filter(s =>
+        s.prenom?.toLowerCase() === user.prenom.toLowerCase() &&
+        s.nom?.toLowerCase()    === user.nom.toLowerCase()
+      )
+    }
+
     return result
-  }, [slides, search, dateFilter, typeFilter, statusFilter])
+  }, [slides, search, dateFilter, typeFilter, statusFilter, mySlides, user])
 
   const canCreate = draft.prenom.trim() && draft.nom.trim() && draft.titre.trim()
 
@@ -127,7 +138,7 @@ export default function Bibliotheque() {
         <h1 style={{ color: '#002882', fontSize: 26, fontWeight: 800, margin: 0, fontFamily: "'Publica Play', Arial, sans-serif" }}>
           Bibliothèque de slides
         </h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => { setSelectMode(v => !v); setSelectedIds([]) }}
             style={{ ...ctaBtn, background: selectMode ? '#334155' : '#f1f5f9', color: selectMode ? '#fff' : '#475569' }}
@@ -135,6 +146,32 @@ export default function Bibliotheque() {
             {selectMode ? '✕ Annuler' : 'Sélectionner'}
           </button>
           {!selectMode && <button onClick={openModal} style={ctaBtn}>+ Créer une slide</button>}
+
+          {/* Profil utilisateur */}
+          <div style={{ width: 1, height: 28, background: '#e2e8f0', margin: '0 4px' }} />
+          <button
+            onClick={() => setMySlides(v => !v)}
+            title={`Filtrer mes slides (${user?.prenom} ${user?.nom})`}
+            style={{
+              background: mySlides ? '#002882' : '#f1f5f9',
+              color: mySlides ? '#fff' : '#475569',
+              border: 'none', borderRadius: 20, padding: '6px 14px',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            <span style={{ width: 24, height: 24, borderRadius: '50%', background: mySlides ? 'rgba(255,255,255,0.25)' : '#002882', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+              {user?.prenom?.[0]}{user?.nom?.[0]}
+            </span>
+            {mySlides ? 'Mes slides' : `${user?.prenom} ${user?.nom}`}
+          </button>
+          <button
+            onClick={() => { logout(); navigate('/login') }}
+            title="Se déconnecter"
+            style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 12, cursor: 'pointer', padding: '4px 6px' }}
+          >
+            ↩
+          </button>
         </div>
       </div>
 
