@@ -37,6 +37,8 @@ export default function Preview() {
   const [textEditMode, setTextEditMode] = useState(false)
   const [layout]                        = useState(() => loadLayout(id))
   const [saving, setSaving]             = useState(false)
+  const [lastSaved, setLastSaved]       = useState(null)
+  const [tick, setTick]                 = useState(0)
 
   useEffect(() => {
     supabase.from('slides').select('*').eq('id', id).single()
@@ -70,6 +72,11 @@ export default function Preview() {
     if (editParam && slide && !loading) setTextEditMode(true)
   }, [editParam, slide, loading])
 
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   const schedSave = (updated) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     setSaving(true)
@@ -91,6 +98,7 @@ export default function Preview() {
       }).eq('id', id)
       if (error) console.error(error)
       setSaving(false)
+      setLastSaved(Date.now())
     }, 800)
   }
 
@@ -152,6 +160,7 @@ export default function Preview() {
   if (!slide)  return <p style={{ padding: 32, color: '#dc2626' }}>Slide introuvable.</p>
 
   const slideTitle = slide.card_titre || slide.titre || 'Sans titre'
+  const savedLabel = lastSaved ? relativeTime(lastSaved) : null
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif', color: '#1A1E2C', background: '#fff' }}>
@@ -172,13 +181,13 @@ export default function Preview() {
         <span style={styles.savedStatus}>
           {saving ? (
             <span style={{ color: '#E97433' }}>Sauvegarde…</span>
-          ) : textEditMode ? (
+          ) : savedLabel ? (
             <>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#3EAE6E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="8" cy="8" r="6"/>
                 <path d="M5.5 8l2 2 3-3.5"/>
               </svg>
-              Sauvegardé
+              Enregistré {savedLabel}
             </>
           ) : null}
         </span>
@@ -249,6 +258,17 @@ export default function Preview() {
       </div>
     </div>
   )
+}
+
+function relativeTime(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000)
+  if (diff < 60)  return "à l'instant"
+  const mins = Math.floor(diff / 60)
+  if (mins < 60)  return `il y a ${mins} min`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `il y a ${hours} h`
+  const days = Math.floor(hours / 24)
+  return `il y a ${days} jour${days > 1 ? 's' : ''}`
 }
 
 const styles = {
