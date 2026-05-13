@@ -63,7 +63,7 @@ export default function Bibliotheque() {
   }, [])
 
   const handleDeleted   = (id) => setSlides(prev => prev.filter(s => s.id !== id))
-  const handleValidated = (id) => setSlides(prev => prev.map(s => s.id === id ? { ...s, validated: true } : s))
+  const handleValidated = (id, value) => setSlides(prev => prev.map(s => s.id === id ? { ...s, validated: value } : s))
 
   /* Filtrage client-side */
   const filteredSlides = useMemo(() => {
@@ -132,12 +132,13 @@ export default function Bibliotheque() {
   const hasActiveFilters = search || dateFilter !== 'all' || typeFilter || statusFilter
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
+    <div style={{ minHeight: '100vh', background: '#FBFAF7' }}>
+    <div style={{ maxWidth: 880, margin: '0 auto', padding: '40px 24px 80px' }}>
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ color: '#002882', fontSize: 26, fontWeight: 800, margin: 0, fontFamily: "'Publica Play', Arial, sans-serif" }}>
-          Bibliothèque de slides
+        <h1 style={{ color: '#0E2A6B', fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.2px', fontFamily: "'Geomanist', Arial, sans-serif" }}>
+          Bibliothèque
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
@@ -176,23 +177,20 @@ export default function Bibliotheque() {
         </div>
       </div>
 
-      {/* ── Barre de recherche + date ── */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 16, pointerEvents: 'none' }}>🔍</span>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher par titre, consultant…"
-            style={{ width: '100%', height: 40, border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '0 12px 0 36px', fontSize: 14, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', background: '#fff' }}
-            onFocus={e => (e.target.style.borderColor = '#002882')}
-            onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
-          />
-        </div>
+      {/* ── Toolbar recherche + filtres ── */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Rechercher dans la bibliothèque…"
+          style={{ flex: 1, height: 38, border: '1px solid #E8E6E1', borderRadius: 10, padding: '0 14px', fontSize: 14, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', background: '#fff', color: '#1A1E2C' }}
+          onFocus={e => (e.target.style.borderColor = '#0E2A6B')}
+          onBlur={e => (e.target.style.borderColor = '#E8E6E1')}
+        />
         <select
           value={dateFilter}
           onChange={e => setDateFilter(e.target.value)}
-          style={{ height: 40, border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '0 12px', fontSize: 14, color: '#1e293b', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}
+          style={{ height: 38, border: '1px solid #E8E6E1', borderRadius: 10, padding: '0 12px', fontSize: 14, color: '#1A1E2C', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}
         >
           {DATE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -255,7 +253,7 @@ export default function Bibliotheque() {
             {filteredSlides.length} slide{filteredSlides.length > 1 ? 's' : ''}
             {hasActiveFilters ? ' trouvée' + (filteredSlides.length > 1 ? 's' : '') : ''}
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {filteredSlides.map(slide => (
               <SlideCard
                 key={slide.id} slide={slide}
@@ -407,6 +405,7 @@ export default function Bibliotheque() {
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }
