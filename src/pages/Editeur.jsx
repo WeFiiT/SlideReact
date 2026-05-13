@@ -40,6 +40,12 @@ export default function Editeur() {
   const [uploadError, setUploadError] = useState(null)
   const [confirmValidate, setConfirmValidate] = useState(false)
   const [validating, setValidating]   = useState(false)
+  const [autoSaving, setAutoSaving]   = useState(false)
+  const [lastAutoSaved, setLastAutoSaved] = useState(null)
+  const [errors, setErrors]           = useState({})
+  const autoSaveTimer                 = useRef(null)
+
+  useEffect(() => () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current) }, [])
 
   useEffect(() => {
     if (!isEditing) return
@@ -62,9 +68,43 @@ export default function Editeur() {
       })
   }, [id, isEditing])
 
-  const set = (field, value) => setForm((f) => ({ ...f, [field]: value }))
+  const buildPayload = (f) => ({
+    ...f,
+    contexte:     f.contexte.filter(Boolean),
+    tags:         f.tags.filter(Boolean),
+    perimetre:    f.perimetre.filter(Boolean),
+    enjeux:       f.enjeux.filter(Boolean),
+    impact:       f.impact.filter(Boolean),
+    type_mission: f.type_mission  || null,
+    prenom:       f.prenom.trim() || null,
+    nom:          f.nom.trim()    || null,
+    card_titre:   f.card_titre.trim() || null,
+  })
+
+  const schedAutoSave = (updated) => {
+    if (!isEditing) return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    setAutoSaving(true)
+    autoSaveTimer.current = setTimeout(async () => {
+      const payload = buildPayload(updated)
+      if (user &&
+          normalizeName(updated.prenom) === user.prenomNorm &&
+          normalizeName(updated.nom)    === user.nomNorm) {
+        payload.owner_email = user.email
+      }
+      const { error } = await supabase.from('slides').update(payload).eq('id', id)
+      if (error) console.warn('Autosave failed:', error)
+      else setLastAutoSaved(Date.now())
+      setAutoSaving(false)
+    }, 2000)
+  }
+
+  const set = (field, value) => {
+    if (errors[field]) setErrors(e => ({ ...e, [field]: null }))
+    setForm(f => { const updated = { ...f, [field]: value }; schedAutoSave(updated); return updated })
+  }
   const setArr = (field, index, value) =>
-    setForm((f) => { const arr = [...f[field]]; arr[index] = value; return { ...f, [field]: arr } })
+    setForm(f => { const arr = [...f[field]]; arr[index] = value; const updated = { ...f, [field]: arr }; schedAutoSave(updated); return updated })
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0]
@@ -88,20 +128,25 @@ export default function Editeur() {
     setUploading(false)
   }
 
+  // Déclaré avant handleSave pour éviter la TDZ lors de l'appel
+  const isOwner = !loading && isEditing && user &&
+    normalizeName(form.prenom) === user.prenomNorm &&
+    normalizeName(form.nom)    === user.nomNorm
+
+  const validate = () => {
+    const errs = {}
+    if (!form.card_titre.trim()) errs.card_titre = 'Le titre de la carte est obligatoire'
+    if (!form.titre.trim())      errs.titre      = 'Le titre de la slide est obligatoire'
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
   const handleSave = async () => {
+    if (!validate()) return
+    if (autoSaveTimer.current) { clearTimeout(autoSaveTimer.current); autoSaveTimer.current = null }
     setSaving(true)
-    const payload = {
-      ...form,
-      contexte:     form.contexte.filter(Boolean),
-      tags:         form.tags.filter(Boolean),
-      perimetre:    form.perimetre.filter(Boolean),
-      enjeux:       form.enjeux.filter(Boolean),
-      impact:       form.impact.filter(Boolean),
-      type_mission: form.type_mission  || null,
-      prenom:       form.prenom.trim() || null,
-      nom:          form.nom.trim()    || null,
-      card_titre:   form.card_titre.trim() || null,
-    }
+    const payload = buildPayload(form)
+    if (!isEditing || isOwner) payload.owner_email = user?.email || null
     let error, data
     if (isEditing) {
       ;({ error } = await supabase.from('slides').update(payload).eq('id', id))
@@ -113,15 +158,31 @@ export default function Editeur() {
     navigate(`/preview/${isEditing ? id : data.id}`)
   }
 
-  const isOwner = !loading && isEditing && user &&
-    normalizeName(form.prenom) === user.prenomNorm &&
-    normalizeName(form.nom)    === user.nomNorm
-
   const handleValidate = async () => {
+    if (!user) return
     setValidating(true)
     const next = !form.validated
-    await supabase.from('slides').update({ validated: next }).eq('id', id)
+    const { error } = await supabase.from('slides').update({ validated: next }).eq('id', id)
+    if (error) { console.error('Validation failed:', error); setValidating(false); return }
     setForm(f => ({ ...f, validated: next }))
+
+    if (next) {
+      const { data: commenters } = await supabase
+        .from('comments').select('author_email, author_name').eq('slide_id', id)
+      const unique = [...new Map((commenters || []).map(c => [c.author_email, c])).values()]
+      const slideTitle = form.card_titre || form.titre || 'Sans titre'
+      const fromName = `${user.prenom} ${user.nom}`
+      await Promise.all(
+        unique
+          .filter(c => c.author_email !== user.email)
+          .map(c => supabase.from('notifications').insert({
+            user_email: c.author_email, type: 'validated',
+            slide_id: id, slide_title: slideTitle,
+            from_name: fromName,
+          }))
+      )
+    }
+
     setValidating(false)
     setConfirmValidate(false)
   }
@@ -145,6 +206,21 @@ export default function Editeur() {
         <div style={styles.divider} />
 
         <span style={styles.title}>{slideTitle}</span>
+
+        {isEditing && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#6E7385' }}>
+            {autoSaving ? (
+              <span style={{ color: '#E97433' }}>Sauvegarde…</span>
+            ) : lastAutoSaved ? (
+              <>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#3EAE6E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="8" cy="8" r="6"/><path d="M5.5 8l2 2 3-3.5"/>
+                </svg>
+                Sauvegardé {relativeTime(lastAutoSaved)}
+              </>
+            ) : null}
+          </span>
+        )}
 
         <div style={{ flex: 1 }} />
 
@@ -223,6 +299,22 @@ export default function Editeur() {
             </svg>
             <span style={styles.railLabel}>Formulaire</span>
           </button>
+
+          {isEditing ? (
+            <button onClick={() => navigate(`/preview/${id}?comments=1`)} style={styles.railItem(false)}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-4 3V5z"/>
+              </svg>
+              <span style={styles.railLabel}>Avis</span>
+            </button>
+          ) : (
+            <button style={{ ...styles.railItem(false), opacity: 0.3, cursor: 'not-allowed' }} disabled>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-4 3V5z"/>
+              </svg>
+              <span style={styles.railLabel}>Avis</span>
+            </button>
+          )}
         </nav>
 
         {/* Workspace – scrollable form */}
@@ -244,7 +336,8 @@ export default function Editeur() {
                   onChange={v => set('nom', v)} placeholder="Ex : Dupont" />
               </div>
               <Field label="Titre de la carte" value={form.card_titre}
-                onChange={v => set('card_titre', v)} placeholder="Ex : Transformation digitale RH" />
+                onChange={v => set('card_titre', v)} placeholder="Ex : Transformation digitale RH"
+                error={errors.card_titre} />
               <div style={{ marginTop: 14 }}>
                 <label style={labelStyle}>Type de mission</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
@@ -270,7 +363,8 @@ export default function Editeur() {
 
             {/* ── En-tête ── */}
             <Card icon="◼" color="#0E2A6B" title="En-tête" desc="Bandeau bleu supérieur de la slide">
-              <Field label="Titre de la slide" value={form.titre} onChange={(v) => set('titre', v)} placeholder="Ex : Transformation digitale RH" />
+              <Field label="Titre de la slide" value={form.titre} onChange={(v) => set('titre', v)} placeholder="Ex : Transformation digitale RH"
+                error={errors.titre} />
               <Field label="Sous-titre" value={form.sous_titre} onChange={(v) => set('sous_titre', v)} placeholder="Ex : Périmètre fonctionnel : PM sur l'app web…" />
             </Card>
 
@@ -415,12 +509,12 @@ function Card({ icon, color, title, desc, children }) {
   )
 }
 
-function Field({ label, value, onChange, placeholder, compact = false }) {
+function Field({ label, value, onChange, placeholder, compact = false, error }) {
   const [focused, setFocused] = useState(false)
   return (
     <div style={{ marginBottom: compact ? 8 : 12 }}>
-      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6E7385', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-        {label}
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: error ? '#dc2626' : '#6E7385', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {label}{error ? ' *' : ''}
       </label>
       <input
         value={value}
@@ -428,8 +522,9 @@ function Field({ label, value, onChange, placeholder, compact = false }) {
         placeholder={placeholder}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        style={{ ...inputBase, borderColor: focused ? '#0E2A6B' : '#E8E6E1', height: compact ? 34 : 40 }}
+        style={{ ...inputBase, borderColor: error ? '#dc2626' : focused ? '#0E2A6B' : '#E8E6E1', height: compact ? 34 : 40 }}
       />
+      {error && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#dc2626', fontWeight: 500 }}>{error}</p>}
     </div>
   )
 }
@@ -471,6 +566,17 @@ const inputBase = {
 const labelStyle = {
   display: 'block', fontSize: 11, fontWeight: 700,
   color: '#6E7385', textTransform: 'uppercase', letterSpacing: 0.5,
+}
+
+function relativeTime(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000)
+  if (diff < 60)  return "à l'instant"
+  const mins = Math.floor(diff / 60)
+  if (mins < 60)  return `il y a ${mins} min`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `il y a ${hours} h`
+  const days = Math.floor(hours / 24)
+  return `il y a ${days} jour${days > 1 ? 's' : ''}`
 }
 
 const styles = {

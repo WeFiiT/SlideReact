@@ -54,10 +54,11 @@ const primaryBtnStyle = {
   cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit',
 }
 
-export default function SlideCard({ slide, onDeleted, onValidated, selectMode = false, selected = false, onSelect }) {
+export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, selectMode = false, selected = false, onSelect }) {
   const navigate = useNavigate()
   const menuRef  = useRef(null)
   const user     = getUser()
+  const isFav    = user && (slide.favorited_by || []).includes(user.email)
 
   const [hover,           setHover]           = useState(false)
   const [showMenu,        setShowMenu]        = useState(false)
@@ -98,14 +99,26 @@ export default function SlideCard({ slide, onDeleted, onValidated, selectMode = 
     else { setDeleting(false); setConfirmDelete(false); alert('Erreur lors de la suppression.') }
   }
 
+  const handleFavorite = async (e) => {
+    e.stopPropagation()
+    if (!user) return
+    const current = slide.favorited_by || []
+    const next = current.includes(user.email)
+      ? current.filter(x => x !== user.email)
+      : [...current, user.email]
+    await supabase.from('slides').update({ favorited_by: next }).eq('id', slide.id)
+    onFavorited?.(slide.id, next)
+  }
+
   const handleCardClick = () => {
     if (selectMode) { onSelect?.(slide.id); return }
     navigate(`/preview/${slide.id}`)
   }
 
-  const dateStr  = new Date(slide.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
-  const tagStyle = TAG_STYLES[slide.type_mission]
-  const initials = [slide.prenom?.[0], slide.nom?.[0]].filter(Boolean).join('').toUpperCase()
+  const dateStr   = slide.created_at ? new Date(slide.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : ''
+  const tagStyle  = TAG_STYLES[slide.type_mission]
+  const initials  = [slide.prenom?.[0], slide.nom?.[0]].filter(Boolean).join('').toUpperCase()
+  const completion = computeCompletion(slide)
 
   const borderColor = selected ? '#0E2A6B' : hover ? '#D6D2C8' : '#E8E6E1'
 
@@ -201,10 +214,30 @@ export default function SlideCard({ slide, onDeleted, onValidated, selectMode = 
           </div>
         </div>
 
+        {/* ── Complétude ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+          <div style={{ flex: 1, height: 3, borderRadius: 999, background: '#F0EEE9', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${(completion.score / completion.total) * 100}%`, borderRadius: 999, background: completion.score === completion.total ? '#3EAE6E' : completion.score >= completion.total * 0.6 ? '#E97433' : '#B8BCC8', transition: 'width .3s' }} />
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 600, color: completion.score === completion.total ? '#3EAE6E' : '#6E7385', flexShrink: 0 }}>
+            {completion.score}/{completion.total}
+          </span>
+        </div>
+
         {/* ── Actions ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {!selectMode ? (
             <>
+              <button
+                onClick={handleFavorite}
+                style={{ ...iconBtnStyle, borderColor: isFav ? '#E97433' : '#E8E6E1' }}
+                title={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill={isFav ? '#E97433' : 'none'} stroke={isFav ? '#E97433' : '#6E7385'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 13.5C8 13.5 2 9.5 2 5.5a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 8-6 8z"/>
+                </svg>
+              </button>
+
               <button
                 onClick={(e) => { e.stopPropagation(); navigate(`/preview/${slide.id}?export=1`) }}
                 style={iconBtnStyle}
@@ -329,4 +362,19 @@ export default function SlideCard({ slide, onDeleted, onValidated, selectMode = 
       )}
     </>
   )
+}
+
+function computeCompletion(s) {
+  const checks = [
+    !!s.card_titre?.trim(),
+    !!s.type_mission,
+    !!s.titre?.trim(),
+    !!s.sous_titre?.trim(),
+    s.contexte?.some(v => v?.trim()),
+    s.perimetre?.some(v => v?.trim()),
+    s.enjeux?.some(v => v?.trim()),
+    s.impact?.some(v => v?.trim()),
+    !!s.logo_url?.trim(),
+  ]
+  return { score: checks.filter(Boolean).length, total: checks.length }
 }

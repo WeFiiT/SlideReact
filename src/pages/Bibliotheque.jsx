@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { createRoot } from 'react-dom/client'
+import JSZip from 'jszip'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
+import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { TYPES, TYPE_COLORS, computeStatus, normalizeName } from '../constants'
 import { getUser, logout } from './Login'
 
@@ -33,6 +38,13 @@ export default function Bibliotheque() {
   const [selectedIds,     setSelectedIds]     = useState([])
   const [confirmBulkDel,  setConfirmBulkDel]  = useState(false)
   const [bulkDeleting,    setBulkDeleting]    = useState(false)
+  const [notifications,   setNotifications]   = useState([])
+  const [notifOpen,       setNotifOpen]       = useState(false)
+  const notifRef                              = useRef(null)
+  const [batchExporting,  setBatchExporting]  = useState(false)
+  const [batchProgress,   setBatchProgress]   = useState({ current: 0, total: 0 })
+  const [batchFormatMenu, setBatchFormatMenu] = useState(false)
+  const batchMenuRef                          = useRef(null)
 
   const toggleSelect = (id) =>
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -52,6 +64,74 @@ export default function Bibliotheque() {
     setBulkDeleting(false)
   }
 
+  const renderSlideCanvas = async (slide) => {
+    const container = document.createElement('div')
+    Object.assign(container.style, {
+      position: 'fixed', top: '0', left: '-9999px',
+      width: '1280px', height: '720px', overflow: 'hidden', zIndex: '-1',
+    })
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    await new Promise(resolve => {
+      root.render(
+        <SlideTemplate {...slide} editMode={false} textEditMode={false}
+          layout={DEFAULT_LAYOUT} onLayoutChange={() => {}} onTextChange={() => {}} />
+      )
+      setTimeout(resolve, 220)
+    })
+    const canvas = await html2canvas(container, {
+      scale: 2, useCORS: true, width: 1280, height: 720, scrollX: 0, scrollY: 0,
+    })
+    root.unmount()
+    document.body.removeChild(container)
+    return canvas
+  }
+
+  const handleBatchExport = async (format) => {
+    const targets = slides.filter(s => selectedIds.includes(s.id))
+    if (!targets.length) return
+    setBatchFormatMenu(false)
+    setBatchExporting(true)
+    setBatchProgress({ current: 0, total: targets.length })
+    await document.fonts.ready
+
+    if (format === 'pdf') {
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 167.0625] })
+      for (let i = 0; i < targets.length; i++) {
+        setBatchProgress({ current: i + 1, total: targets.length })
+        const canvas = await renderSlideCanvas(targets[i])
+        if (i > 0) pdf.addPage([297, 167.0625], 'landscape')
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 297, 167.0625)
+      }
+      pdf.save(`export-slides-${targets.length}.pdf`)
+    } else {
+      const zip = new JSZip()
+      for (let i = 0; i < targets.length; i++) {
+        setBatchProgress({ current: i + 1, total: targets.length })
+        const canvas = await renderSlideCanvas(targets[i])
+        const filename = (targets[i].card_titre || targets[i].titre || `slide-${i + 1}`).replace(/[/\\?%*:|"<>]/g, '-')
+        zip.file(`${filename}.png`, canvas.toDataURL('image/png').split(',')[1], { base64: true })
+      }
+      const blob = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.download = `export-slides-${targets.length}.zip`
+      link.href = url
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+
+    setBatchExporting(false)
+    exitSelectMode()
+  }
+
+  useEffect(() => {
+    if (!batchFormatMenu) return
+    const h = (e) => { if (batchMenuRef.current && !batchMenuRef.current.contains(e.target)) setBatchFormatMenu(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [batchFormatMenu])
+
   useEffect(() => {
     supabase.from('slides').select('*').order('created_at', { ascending: false })
       .then(({ data, error }) => {
@@ -61,8 +141,33 @@ export default function Bibliotheque() {
       })
   }, [])
 
-  const handleDeleted   = (id) => setSlides(prev => prev.filter(s => s.id !== id))
+  useEffect(() => {
+    if (!user) return
+    supabase.from('notifications')
+      .select('*').eq('user_email', user.email)
+      .order('created_at', { ascending: false }).limit(30)
+      .then(({ data }) => { if (data) setNotifications(data) })
+  }, [user?.email])
+
+  useEffect(() => {
+    if (!notifOpen) return
+    const h = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [notifOpen])
+
+  const openNotifications = () => {
+    setNotifOpen(v => !v)
+    // Mark all as read
+    if (!notifOpen && notifications.some(n => !n.read) && user) {
+      supabase.from('notifications').update({ read: true }).eq('user_email', user.email)
+        .then(() => setNotifications(prev => prev.map(n => ({ ...n, read: true }))))
+    }
+  }
+
+  const handleDeleted   = (id)        => setSlides(prev => prev.filter(s => s.id !== id))
   const handleValidated = (id, value) => setSlides(prev => prev.map(s => s.id === id ? { ...s, validated: value } : s))
+  const handleFavorited = (id, next)  => setSlides(prev => prev.map(s => s.id === id ? { ...s, favorited_by: next } : s))
 
   /* Filtrage client-side */
   const filteredSlides = useMemo(() => {
@@ -70,10 +175,15 @@ export default function Bibliotheque() {
 
     if (search.trim()) {
       const q = search.toLowerCase()
-      result = result.filter(s =>
-        [s.card_titre, s.titre, s.sous_titre, s.prenom, s.nom]
-          .some(v => v?.toLowerCase().includes(q))
-      )
+      result = result.filter(s => [
+        s.card_titre, s.titre, s.sous_titre, s.prenom, s.nom, s.type_mission,
+        s.metrique_1_label, s.metrique_2_label, s.metrique_3_label,
+        ...(s.contexte  || []),
+        ...(s.perimetre || []),
+        ...(s.enjeux    || []),
+        ...(s.impact    || []),
+        ...(s.tags      || []),
+      ].some(v => v?.toLowerCase().includes(q)))
     }
 
     if (dateFilter !== 'all') {
@@ -93,18 +203,27 @@ export default function Bibliotheque() {
     return result
   }, [slides, search, dateFilter, typeFilter, statusFilter])
 
+  const sortFavsFirst = (arr) => {
+    if (!user) return arr
+    return [...arr].sort((a, b) => {
+      const aFav = (a.favorited_by || []).includes(user.email) ? 0 : 1
+      const bFav = (b.favorited_by || []).includes(user.email) ? 0 : 1
+      return aFav - bFav
+    })
+  }
+
   const myFilteredSlides = useMemo(() =>
-    user ? filteredSlides.filter(s =>
+    user ? sortFavsFirst(filteredSlides.filter(s =>
       normalizeName(s.prenom) === user.prenomNorm &&
       normalizeName(s.nom)    === user.nomNorm
-    ) : []
+    )) : []
   , [filteredSlides, user])
 
   const othersFilteredSlides = useMemo(() =>
-    user ? filteredSlides.filter(s =>
+    user ? sortFavsFirst(filteredSlides.filter(s =>
       !(normalizeName(s.prenom) === user.prenomNorm &&
         normalizeName(s.nom)    === user.nomNorm)
-    ) : filteredSlides
+    )) : filteredSlides
   , [filteredSlides, user])
 
   const canCreate = draft.prenom.trim() && draft.nom.trim() && draft.titre.trim()
@@ -165,6 +284,58 @@ export default function Bibliotheque() {
           </span>
           <span style={{ fontSize: 13, color: '#1A1E2C', fontWeight: 600 }}>{user?.prenom} {user?.nom}</span>
         </div>
+        <div ref={notifRef} style={{ position: 'relative' }}>
+          <button
+            onClick={openNotifications}
+            title="Notifications"
+            style={{ position: 'relative', width: 40, height: 40, borderRadius: 10, background: notifOpen ? '#F3F1EC' : '#fff', border: '1px solid #E8E6E1', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6E7385' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#F3F1EC' }}
+            onMouseLeave={e => { if (!notifOpen) e.currentTarget.style.background = '#fff' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 2a5 5 0 0 1 5 5v2l1 2H2l1-2V7a5 5 0 0 1 5-5zM6.5 13a1.5 1.5 0 0 0 3 0"/>
+            </svg>
+            {notifications.some(n => !n.read) && (
+              <span style={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: '50%', background: '#E97433', border: '1.5px solid #fff' }} />
+            )}
+          </button>
+
+          {notifOpen && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 320, background: '#fff', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid #E8E6E1', zIndex: 600, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #E8E6E1' }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#1A1E2C' }}>Notifications</span>
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 700, background: '#E97433', color: '#fff', padding: '2px 7px', borderRadius: 999 }}>
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </div>
+              {notifications.length === 0 ? (
+                <p style={{ padding: '16px', color: '#6E7385', fontSize: 13, margin: 0 }}>Aucune notification pour le moment.</p>
+              ) : (
+                <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+                  {notifications.map(n => (
+                    <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid #F5F4F0', background: n.read ? '#fff' : '#FAFBFF', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: n.read ? 'transparent' : '#E97433', flexShrink: 0, marginTop: 6 }} />
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: '0 0 3px', fontSize: 13, color: '#1A1E2C', lineHeight: 1.4 }}>
+                          {n.type === 'comment'
+                            ? <><strong>{n.from_name}</strong> a commenté <strong>«&nbsp;{n.slide_title}&nbsp;»</strong></>
+                            : <><strong>{n.from_name}</strong> a marqué <strong>«&nbsp;{n.slide_title}&nbsp;»</strong> comme Ready</>
+                          }
+                        </p>
+                        <span style={{ fontSize: 11, color: '#6E7385' }}>
+                          {n.created_at ? new Date(n.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <button
           onClick={() => { logout(); navigate('/login') }}
           title="Se déconnecter"
@@ -307,6 +478,7 @@ export default function Bibliotheque() {
                   key={slide.id} slide={slide}
                   onDeleted={handleDeleted}
                   onValidated={handleValidated}
+                  onFavorited={handleFavorited}
                   selectMode={selectMode}
                   selected={selectedIds.includes(slide.id)}
                   onSelect={toggleSelect}
@@ -328,6 +500,7 @@ export default function Bibliotheque() {
                   key={slide.id} slide={slide}
                   onDeleted={handleDeleted}
                   onValidated={handleValidated}
+                  onFavorited={handleFavorited}
                   selectMode={selectMode}
                   selected={selectedIds.includes(slide.id)}
                   onSelect={toggleSelect}
@@ -346,19 +519,61 @@ export default function Bibliotheque() {
           display: 'flex', alignItems: 'center', gap: 16,
           boxShadow: '0 8px 32px rgba(0,0,0,0.3)', zIndex: 500, whiteSpace: 'nowrap',
         }}>
-          <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
-            {selectedIds.length} slide{selectedIds.length > 1 ? 's' : ''} sélectionnée{selectedIds.length > 1 ? 's' : ''}
-          </span>
+          {batchExporting ? (
+            <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
+              Export {batchProgress.current}/{batchProgress.total}…
+            </span>
+          ) : (
+            <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
+              {selectedIds.length} slide{selectedIds.length > 1 ? 's' : ''} sélectionnée{selectedIds.length > 1 ? 's' : ''}
+            </span>
+          )}
           <button
             onClick={() => setSelectedIds([...myFilteredSlides, ...othersFilteredSlides].map(s => s.id))}
-            style={{ background: 'transparent', border: '1px solid #334155', color: '#cbd5e1', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+            disabled={batchExporting}
+            style={{ background: 'transparent', border: '1px solid #334155', color: '#cbd5e1', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: batchExporting ? 0.4 : 1 }}
           >
             Tout sélectionner
           </button>
+          <div ref={batchMenuRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => selectedIds.length > 0 && !batchExporting && setBatchFormatMenu(v => !v)}
+              disabled={selectedIds.length === 0 || batchExporting}
+              style={{ background: selectedIds.length > 0 && !batchExporting ? '#E97433' : '#475569', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 13, fontWeight: 700, cursor: selectedIds.length > 0 && !batchExporting ? 'pointer' : 'default', opacity: selectedIds.length === 0 || batchExporting ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 7 }}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 10V2M5 5l3-3 3 3"/><path d="M3 10v3a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3"/>
+              </svg>
+              {batchExporting ? `Export ${batchProgress.current}/${batchProgress.total}…` : `Exporter (${selectedIds.length})`}
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+                <path d="M3 5l3 3 3-3"/>
+              </svg>
+            </button>
+
+            {batchFormatMenu && (
+              <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, background: '#1e293b', borderRadius: 8, padding: 4, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', border: '1px solid #334155', minWidth: 180, zIndex: 600 }}>
+                {[
+                  { fmt: 'png', label: 'PNG — ZIP de fichiers',       icon: 'M2 12h12M8 2v8M5 7l3-3 3 3' },
+                  { fmt: 'pdf', label: 'PDF — Document multi-pages',  icon: 'M9 2H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6zM9 2v4h4' },
+                ].map(({ fmt, label, icon }) => (
+                  <button key={fmt} onClick={() => handleBatchExport(fmt)}
+                    style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#e2e8f0', fontWeight: 500, cursor: 'pointer', borderRadius: 6, textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 10 }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#334155'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={icon}/>
+                    </svg>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
-            onClick={() => selectedIds.length > 0 && setConfirmBulkDel(true)}
-            disabled={selectedIds.length === 0}
-            style={{ background: selectedIds.length > 0 ? '#dc2626' : '#475569', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 13, fontWeight: 700, cursor: selectedIds.length > 0 ? 'pointer' : 'default', opacity: selectedIds.length === 0 ? 0.5 : 1 }}
+            onClick={() => selectedIds.length > 0 && !batchExporting && setConfirmBulkDel(true)}
+            disabled={selectedIds.length === 0 || batchExporting}
+            style={{ background: selectedIds.length > 0 && !batchExporting ? '#dc2626' : '#475569', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 13, fontWeight: 700, cursor: selectedIds.length > 0 && !batchExporting ? 'pointer' : 'default', opacity: selectedIds.length === 0 || batchExporting ? 0.5 : 1 }}
           >
             🗑️ Supprimer ({selectedIds.length})
           </button>
