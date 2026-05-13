@@ -25,6 +25,30 @@ export default function Bibliotheque() {
   const [typeFilter,   setTypeFilter]   = useState(null)
   const [statusFilter, setStatusFilter] = useState(null)
 
+  /* Multi-sélection */
+  const [selectMode,      setSelectMode]      = useState(false)
+  const [selectedIds,     setSelectedIds]     = useState([])
+  const [confirmBulkDel,  setConfirmBulkDel]  = useState(false)
+  const [bulkDeleting,    setBulkDeleting]    = useState(false)
+
+  const toggleSelect = (id) =>
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+
+  const exitSelectMode = () => { setSelectMode(false); setSelectedIds([]) }
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true)
+    const { error } = await supabase.from('slides').delete().in('id', selectedIds)
+    if (!error) {
+      setSlides(prev => prev.filter(s => !selectedIds.includes(s.id)))
+      exitSelectMode()
+      setConfirmBulkDel(false)
+    } else {
+      alert('Erreur lors de la suppression.')
+    }
+    setBulkDeleting(false)
+  }
+
   useEffect(() => {
     supabase.from('slides').select('*').order('created_at', { ascending: false })
       .then(({ data, error }) => {
@@ -103,7 +127,15 @@ export default function Bibliotheque() {
         <h1 style={{ color: '#002882', fontSize: 26, fontWeight: 800, margin: 0, fontFamily: "'Publica Play', Arial, sans-serif" }}>
           Bibliothèque de slides
         </h1>
-        <button onClick={openModal} style={ctaBtn}>+ Créer une slide</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => { setSelectMode(v => !v); setSelectedIds([]) }}
+            style={{ ...ctaBtn, background: selectMode ? '#334155' : '#f1f5f9', color: selectMode ? '#fff' : '#475569' }}
+          >
+            {selectMode ? '✕ Annuler' : 'Sélectionner'}
+          </button>
+          {!selectMode && <button onClick={openModal} style={ctaBtn}>+ Créer une slide</button>}
+        </div>
       </div>
 
       {/* ── Barre de recherche + date ── */}
@@ -187,10 +219,70 @@ export default function Bibliotheque() {
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
             {filteredSlides.map(slide => (
-              <SlideCard key={slide.id} slide={slide} onDeleted={handleDeleted} />
+              <SlideCard
+                key={slide.id} slide={slide} onDeleted={handleDeleted}
+                selectMode={selectMode}
+                selected={selectedIds.includes(slide.id)}
+                onSelect={toggleSelect}
+              />
             ))}
           </div>
         </>
+      )}
+
+      {/* ── Barre de sélection flottante ── */}
+      {selectMode && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: '#1e293b', borderRadius: 12, padding: '12px 20px',
+          display: 'flex', alignItems: 'center', gap: 16,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.3)', zIndex: 500, whiteSpace: 'nowrap',
+        }}>
+          <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
+            {selectedIds.length} slide{selectedIds.length > 1 ? 's' : ''} sélectionnée{selectedIds.length > 1 ? 's' : ''}
+          </span>
+          <button
+            onClick={() => setSelectedIds(filteredSlides.map(s => s.id))}
+            style={{ background: 'transparent', border: '1px solid #334155', color: '#cbd5e1', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Tout sélectionner
+          </button>
+          <button
+            onClick={() => selectedIds.length > 0 && setConfirmBulkDel(true)}
+            disabled={selectedIds.length === 0}
+            style={{ background: selectedIds.length > 0 ? '#dc2626' : '#475569', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 13, fontWeight: 700, cursor: selectedIds.length > 0 ? 'pointer' : 'default', opacity: selectedIds.length === 0 ? 0.5 : 1 }}
+          >
+            🗑️ Supprimer ({selectedIds.length})
+          </button>
+        </div>
+      )}
+
+      {/* ── Modale confirmation suppression en masse ── */}
+      {confirmBulkDel && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+          onClick={(e) => { if (e.target === e.currentTarget && !bulkDeleting) setConfirmBulkDel(false) }}
+        >
+          <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: 20, marginBottom: 10 }}>🗑️</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 6 }}>
+              Supprimer {selectedIds.length} slide{selectedIds.length > 1 ? 's' : ''} ?
+            </div>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.5 }}>
+              Cette action est irréversible. Les {selectedIds.length} slides sélectionnées seront supprimées définitivement.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={handleBulkDelete} disabled={bulkDeleting}
+                style={{ flex: 1, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: bulkDeleting ? 'default' : 'pointer', opacity: bulkDeleting ? 0.7 : 1 }}>
+                {bulkDeleting ? 'Suppression…' : 'Supprimer'}
+              </button>
+              <button onClick={() => setConfirmBulkDel(false)} disabled={bulkDeleting}
+                style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Modale création ── */}

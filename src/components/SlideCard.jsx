@@ -4,12 +4,14 @@ import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
 import { TYPE_COLORS, computeStatus, STATUS_STYLES } from '../constants'
 
-export default function SlideCard({ slide, onDeleted }) {
+export default function SlideCard({ slide, onDeleted, selectMode = false, selected = false, onSelect }) {
   const navigate = useNavigate()
   const thumbRef = useRef(null)
-  const [thumbScale, setThumbScale] = useState(0.25)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const menuRef  = useRef(null)
+  const [thumbScale,     setThumbScale]     = useState(0.25)
+  const [showMenu,       setShowMenu]       = useState(false)
+  const [confirmDelete,  setConfirmDelete]  = useState(false)
+  const [deleting,       setDeleting]       = useState(false)
 
   useEffect(() => {
     if (!thumbRef.current) return
@@ -22,6 +24,16 @@ export default function SlideCard({ slide, onDeleted }) {
     return () => ro.disconnect()
   }, [])
 
+  /* Fermer le menu au clic extérieur */
+  useEffect(() => {
+    if (!showMenu) return
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showMenu])
+
   const handleDelete = async () => {
     setDeleting(true)
     const { error } = await supabase.from('slides').delete().eq('id', slide.id)
@@ -29,20 +41,30 @@ export default function SlideCard({ slide, onDeleted }) {
     else { setDeleting(false); setConfirmDelete(false); alert('Erreur lors de la suppression.') }
   }
 
+  const handleThumbClick = () => {
+    if (selectMode) { onSelect?.(slide.id); return }
+    navigate(`/preview/${slide.id}`)
+  }
+
   const dateStr = new Date(slide.created_at).toLocaleDateString('fr-FR', {
     day: '2-digit', month: 'short', year: 'numeric',
   })
 
   return (
-    <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.15s' }}
-      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.12)')}
-      onMouseLeave={(e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)')}
+    <div style={{
+      border: selected ? '2px solid #002882' : '1px solid #e2e8f0',
+      borderRadius: 12, background: '#fff', overflow: 'hidden',
+      boxShadow: selected ? '0 0 0 4px #002882' + '18' : '0 2px 8px rgba(0,0,0,0.06)',
+      display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.15s, border 0.15s',
+    }}
+      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.12)' }}
+      onMouseLeave={(e) => { if (!selected) e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)' }}
     >
 
       {/* Miniature 16:9 */}
       <div
         ref={thumbRef}
-        onClick={() => navigate(`/preview/${slide.id}`)}
+        onClick={handleThumbClick}
         style={{ width: '100%', aspectRatio: '16/9', position: 'relative', overflow: 'hidden', background: '#f1f5f9', cursor: 'pointer', flexShrink: 0 }}
       >
         <div style={{ width: 1280, height: 720, transform: `scale(${thumbScale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
@@ -56,6 +78,20 @@ export default function SlideCard({ slide, onDeleted }) {
           />
         </div>
         <div style={{ position: 'absolute', inset: 0, background: 'transparent' }} />
+
+        {/* Checkbox en mode sélection */}
+        {selectMode && (
+          <div style={{
+            position: 'absolute', top: 10, left: 10,
+            width: 22, height: 22, borderRadius: 6,
+            background: selected ? '#002882' : 'rgba(255,255,255,0.9)',
+            border: selected ? '2px solid #002882' : '2px solid #cbd5e1',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+          }}>
+            {selected && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+          </div>
+        )}
       </div>
 
       {/* Infos */}
@@ -94,16 +130,50 @@ export default function SlideCard({ slide, onDeleted }) {
       </div>
 
       {/* CTAs */}
-      <div style={{ display: 'flex', gap: 8, padding: '10px 16px 14px', borderTop: '1px solid #f1f5f9' }}>
-        <button onClick={() => navigate(`/preview/${slide.id}?edit=1`)} style={btn('#002882', true)}>
-          Voir & Éditer
-        </button>
-        <button onClick={() => navigate(`/preview/${slide.id}?export=1`)} style={btn('#f08a2a')}>
-          Exporter
-        </button>
-        <button onClick={() => setConfirmDelete(true)} style={{ ...btn('#dc2626'), marginLeft: 'auto', padding: '7px 12px' }} title="Supprimer">
-          ✕
-        </button>
+      <div style={{ display: 'flex', gap: 8, padding: '10px 16px 14px', borderTop: '1px solid #f1f5f9', alignItems: 'center' }}>
+        {!selectMode && (
+          <>
+            <button onClick={() => navigate(`/preview/${slide.id}?edit=1`)} style={btn('#002882', true)}>
+              Voir & Éditer
+            </button>
+            <button onClick={() => navigate(`/preview/${slide.id}?export=1`)} style={btn('#f08a2a')}>
+              Exporter
+            </button>
+          </>
+        )}
+        {selectMode && (
+          <button onClick={() => onSelect?.(slide.id)} style={{ ...btn(selected ? '#002882' : '#64748b', true) }}>
+            {selected ? '✓ Sélectionnée' : 'Sélectionner'}
+          </button>
+        )}
+
+        {/* Menu ⋯ */}
+        {!selectMode && (
+          <div ref={menuRef} style={{ marginLeft: 'auto', position: 'relative' }}>
+            <button
+              onClick={() => setShowMenu(v => !v)}
+              style={{ background: 'transparent', border: '1px solid #e2e8f0', borderRadius: 6, padding: '7px 10px', fontSize: 15, cursor: 'pointer', color: '#64748b', lineHeight: 1 }}
+            >
+              ···
+            </button>
+            {showMenu && (
+              <div style={{
+                position: 'absolute', bottom: '100%', right: 0, marginBottom: 6,
+                background: '#fff', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                border: '1px solid #e2e8f0', minWidth: 160, zIndex: 100, overflow: 'hidden',
+              }}>
+                <button
+                  onClick={() => { setShowMenu(false); setConfirmDelete(true) }}
+                  style={{ width: '100%', background: 'none', border: 'none', padding: '10px 16px', fontSize: 13, color: '#dc2626', fontWeight: 600, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8 }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                >
+                  🗑️ Supprimer
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modale de confirmation */}
@@ -119,18 +189,12 @@ export default function SlideCard({ slide, onDeleted }) {
               « {slide.card_titre || slide.titre || 'Sans titre'} » sera supprimée définitivement.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                style={{ flex: 1, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}
-              >
+              <button onClick={handleDelete} disabled={deleting}
+                style={{ flex: 1, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}>
                 {deleting ? 'Suppression…' : 'Supprimer'}
               </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                disabled={deleting}
-                style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
-              >
+              <button onClick={() => setConfirmDelete(false)} disabled={deleting}
+                style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
                 Annuler
               </button>
             </div>
@@ -143,14 +207,8 @@ export default function SlideCard({ slide, onDeleted }) {
 
 function btn(bg, flex = false) {
   return {
-    background: bg,
-    color: '#fff',
-    border: 'none',
-    borderRadius: 6,
-    padding: '7px 14px',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
+    background: bg, color: '#fff', border: 'none', borderRadius: 6,
+    padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
     ...(flex ? { flex: 1 } : {}),
   }
 }
