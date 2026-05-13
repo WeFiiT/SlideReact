@@ -115,10 +115,9 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     navigate(`/preview/${slide.id}`)
   }
 
-  const dateStr   = slide.created_at ? new Date(slide.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : ''
-  const tagStyle  = TAG_STYLES[slide.type_mission]
-  const initials  = [slide.prenom?.[0], slide.nom?.[0]].filter(Boolean).join('').toUpperCase()
-  const completion = computeCompletion(slide)
+  const dateStr  = slide.created_at ? new Date(slide.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : ''
+  const tagStyle = TAG_STYLES[slide.type_mission]
+  const initials = [slide.prenom?.[0], slide.nom?.[0]].filter(Boolean).join('').toUpperCase()
 
   const borderColor = selected ? '#0E2A6B' : hover ? '#D6D2C8' : '#E8E6E1'
 
@@ -171,141 +170,125 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
         </div>
 
         {/* ── Contenu ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: THUMB_H }}>
 
-          {/* Ligne 1 : titre + tag */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#0E2A6B', letterSpacing: -0.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {slide.card_titre || slide.titre || '(sans titre)'}
-            </span>
-            {tagStyle && (
-              <span style={{ fontSize: 11, fontWeight: 600, color: tagStyle.fg, background: tagStyle.bg, padding: '2px 8px', borderRadius: 999, letterSpacing: 0.1, flexShrink: 0, fontFamily: 'inherit' }}>
-                {slide.type_mission}
-              </span>
-            )}
-          </div>
-
-          {/* Ligne 2 : sous-titre */}
-          {slide.sous_titre && (
-            <div style={{ fontSize: 13, color: '#6E7385', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {slide.sous_titre}
-            </div>
-          )}
-
-          {/* Ligne 3 : méta */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: '#6E7385', marginTop: 4, flexWrap: 'wrap' }}>
-            <span>{dateStr}</span>
-            <span style={{ width: 2, height: 2, borderRadius: 999, background: '#C9CCD6', flexShrink: 0 }} />
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: validated ? '#3EAE6E' : '#B8BCC8', flexShrink: 0 }} />
-              {validated ? 'Ready' : 'Brouillon'}
-            </span>
-            {(slide.prenom || slide.nom) && (
-              <>
-                <span style={{ width: 2, height: 2, borderRadius: 999, background: '#C9CCD6', flexShrink: 0 }} />
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#F1EEE7', color: '#0E2A6B', fontSize: 7.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {initials}
-                  </span>
-                  <span style={{ color: '#1A1E2C', fontWeight: 500 }}>{slide.prenom} {slide.nom}</span>
+          {/* Haut : titre + tag + favori */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: slide.sous_titre ? 4 : 0 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#0E2A6B', letterSpacing: -0.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {slide.card_titre || slide.titre || '(sans titre)'}
                 </span>
-              </>
-            )}
-          </div>
-        </div>
+                {tagStyle && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: tagStyle.fg, background: tagStyle.bg, padding: '2px 8px', borderRadius: 999, letterSpacing: 0.1, flexShrink: 0, fontFamily: 'inherit' }}>
+                    {slide.type_mission}
+                  </span>
+                )}
+              </div>
+              {slide.sous_titre && (
+                <div style={{ fontSize: 13, color: '#6E7385', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {slide.sous_titre}
+                </div>
+              )}
+            </div>
 
-        {/* ── Complétude ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-          <div style={{ flex: 1, height: 3, borderRadius: 999, background: '#F0EEE9', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${(completion.score / completion.total) * 100}%`, borderRadius: 999, background: completion.score === completion.total ? '#3EAE6E' : completion.score >= completion.total * 0.6 ? '#E97433' : '#B8BCC8', transition: 'width .3s' }} />
-          </div>
-          <span style={{ fontSize: 11, fontWeight: 600, color: completion.score === completion.total ? '#3EAE6E' : '#6E7385', flexShrink: 0 }}>
-            {completion.score}/{completion.total}
-          </span>
-        </div>
-
-        {/* ── Actions ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {!selectMode ? (
-            <>
+            {/* Favori — petit, haut à droite */}
+            {!selectMode && (
               <button
                 onClick={handleFavorite}
-                style={{ ...iconBtnStyle, borderColor: isFav ? '#E97433' : '#E8E6E1' }}
                 title={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, padding: 0 }}
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill={isFav ? '#E97433' : 'none'} stroke={isFav ? '#E97433' : '#6E7385'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill={isFav ? '#E97433' : 'none'} stroke={isFav ? '#E97433' : '#C9CCD6'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 13.5C8 13.5 2 9.5 2 5.5a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 8-6 8z"/>
                 </svg>
               </button>
+            )}
+          </div>
 
-              <button
-                onClick={(e) => { e.stopPropagation(); navigate(`/preview/${slide.id}?export=1`) }}
-                style={iconBtnStyle}
-                title={`Exporter ${slide.card_titre || slide.titre || ''}`}
-                aria-label={`Exporter ${slide.card_titre || slide.titre || ''}`}
-              >
-                <IconExport />
-              </button>
+          {/* Spacer */}
+          <div style={{ flex: 1 }} />
 
-              {/* Bouton Valider / Retirer la validation — propriétaire uniquement */}
-              {isOwner && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmValidate(true) }}
-                  style={{
-                    ...iconBtnStyle, width: 'auto', padding: '0 10px', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', gap: 4,
-                    color:  validated ? '#92521A' : '#16a34a',
-                    border: validated ? '1px solid #fde9c5' : '1px solid #bbf7d0',
-                  }}
-                >
-                  {validated ? 'Retirer la validation' : '✓ Valider'}
-                </button>
+          {/* Bas : méta + CTAs */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 }}>
+            {/* Méta */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#6E7385', flexWrap: 'wrap' }}>
+              <span>{dateStr}</span>
+              <span style={{ width: 2, height: 2, borderRadius: 999, background: '#C9CCD6', flexShrink: 0 }} />
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: validated ? '#3EAE6E' : '#B8BCC8', flexShrink: 0 }} />
+                {validated ? 'Ready' : 'Brouillon'}
+              </span>
+              {(slide.prenom || slide.nom) && (
+                <>
+                  <span style={{ width: 2, height: 2, borderRadius: 999, background: '#C9CCD6', flexShrink: 0 }} />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#F1EEE7', color: '#0E2A6B', fontSize: 7, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {initials}
+                    </span>
+                    <span style={{ color: '#1A1E2C', fontWeight: 500 }}>{slide.prenom} {slide.nom}</span>
+                  </span>
+                </>
               )}
+            </div>
 
-              {/* Kebab — suppression */}
-              <div ref={menuRef} style={{ position: 'relative' }}>
+            {/* CTAs bas à droite */}
+            {!selectMode ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setShowMenu(v => !v) }}
-                  style={{ ...iconBtnStyle, background: showMenu ? '#f1f5f9' : '#fff' }}
-                  title={`Plus d'options pour ${slide.card_titre || slide.titre || ''}`}
-                  aria-label={`Plus d'options pour ${slide.card_titre || slide.titre || ''}`}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/preview/${slide.id}?export=1`) }}
+                  style={iconBtnStyle}
+                  title={`Exporter ${slide.card_titre || slide.titre || ''}`}
                 >
-                  <IconKebab />
+                  <IconExport />
                 </button>
-                {showMenu && (
-                  <div style={{
-                    position: 'absolute', bottom: 'calc(100% + 8px)', right: 0,
-                    background: '#fff', borderRadius: 10, padding: 4,
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)',
-                    border: '1px solid #f1f5f9', minWidth: 180, zIndex: 100,
-                  }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmDelete(true) }}
-                      style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#dc2626', fontWeight: 600, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                )}
-              </div>
 
+                {isOwner && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmValidate(true) }}
+                    style={{ ...iconBtnStyle, width: 'auto', padding: '0 10px', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', color: validated ? '#92521A' : '#16a34a', border: validated ? '1px solid #fde9c5' : '1px solid #bbf7d0' }}
+                  >
+                    {validated ? 'Retirer la validation' : '✓ Valider'}
+                  </button>
+                )}
+
+                <div ref={menuRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(v => !v) }}
+                    style={{ ...iconBtnStyle, background: showMenu ? '#f1f5f9' : '#fff' }}
+                  >
+                    <IconKebab />
+                  </button>
+                  {showMenu && (
+                    <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, background: '#fff', borderRadius: 10, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)', border: '1px solid #f1f5f9', minWidth: 180, zIndex: 100 }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmDelete(true) }}
+                        style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#dc2626', fontWeight: 600, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/preview/${slide.id}?edit=1`) }}
+                  style={primaryBtnStyle}
+                >
+                  Ouvrir <IconArrow />
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={(e) => { e.stopPropagation(); navigate(`/preview/${slide.id}?edit=1`) }}
-                style={primaryBtnStyle}
-                aria-label={`Ouvrir ${slide.card_titre || slide.titre || ''}`}
+                onClick={(e) => { e.stopPropagation(); onSelect?.(slide.id) }}
+                style={{ ...primaryBtnStyle, background: selected ? '#0E2A6B' : '#e2e8f0', color: selected ? '#fff' : '#475569' }}
               >
-                Ouvrir <IconArrow />
+                {selected ? '✓ Sélectionnée' : 'Sélectionner'}
               </button>
-            </>
-          ) : (
-            <button
-              onClick={(e) => { e.stopPropagation(); onSelect?.(slide.id) }}
-              style={{ ...primaryBtnStyle, background: selected ? '#0E2A6B' : '#e2e8f0', color: selected ? '#fff' : '#475569' }}
-            >
-              {selected ? '✓ Sélectionnée' : 'Sélectionner'}
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
