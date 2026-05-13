@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 
@@ -39,6 +40,8 @@ export default function Preview() {
   const [saving, setSaving]             = useState(false)
   const [lastSaved, setLastSaved]       = useState(null)
   const [tick, setTick]                 = useState(0)
+  const [exportMenu, setExportMenu]     = useState(false)
+  const exportMenuRef                   = useRef(null)
 
   useEffect(() => {
     supabase.from('slides').select('*').eq('id', id).single()
@@ -117,28 +120,37 @@ export default function Preview() {
     })
   }
 
+  useEffect(() => {
+    if (!exportMenu) return
+    const h = (e) => { if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) setExportMenu(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [exportMenu])
+
+  const captureCanvas = async () => {
+    await document.fonts.ready
+    const wrapper = document.createElement('div')
+    Object.assign(wrapper.style, {
+      position: 'fixed', top: '0', left: '-9999px',
+      width: '1280px', height: '720px',
+      overflow: 'visible', zIndex: '-1', transform: 'none',
+    })
+    wrapper.appendChild(slideRef.current.cloneNode(true))
+    document.body.appendChild(wrapper)
+    const canvas = await html2canvas(wrapper, {
+      scale: 2, useCORS: true,
+      width: 1280, height: 720,
+      scrollX: 0, scrollY: 0,
+    })
+    document.body.removeChild(wrapper)
+    return canvas
+  }
+
   const exportPNG = async () => {
     if (!slideRef.current) return
     setExporting(true)
     try {
-      await document.fonts.ready
-
-      const wrapper = document.createElement('div')
-      Object.assign(wrapper.style, {
-        position: 'fixed', top: '0', left: '-9999px',
-        width: '1280px', height: '720px',
-        overflow: 'visible', zIndex: '-1', transform: 'none',
-      })
-      wrapper.appendChild(slideRef.current.cloneNode(true))
-      document.body.appendChild(wrapper)
-
-      const canvas = await html2canvas(wrapper, {
-        scale: 2, useCORS: true,
-        width: 1280, height: 720,
-        scrollX: 0, scrollY: 0,
-      })
-      document.body.removeChild(wrapper)
-
+      const canvas = await captureCanvas()
       const filename = (slide?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
       const link = document.createElement('a')
       link.download = `${filename}.png`
@@ -147,12 +159,28 @@ export default function Preview() {
     } finally { setExporting(false) }
   }
 
-  const handleExport = () => {
+  const exportPDF = async () => {
+    if (!slideRef.current) return
+    setExporting(true)
+    try {
+      const canvas = await captureCanvas()
+      const imgData = canvas.toDataURL('image/png')
+      // A4 landscape in mm: 297 × 210 — slide is 16:9 so we fit to width
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 167.0625] })
+      pdf.addImage(imgData, 'PNG', 0, 0, 297, 167.0625)
+      const filename = (slide?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
+      pdf.save(`${filename}.pdf`)
+    } finally { setExporting(false) }
+  }
+
+  const handleExport = (format) => {
+    setExportMenu(false)
+    const run = format === 'pdf' ? exportPDF : exportPNG
     if (textEditMode) {
       setTextEditMode(false)
-      setTimeout(exportPNG, 80)
+      setTimeout(run, 80)
     } else {
-      exportPNG()
+      run()
     }
   }
 
@@ -207,13 +235,57 @@ export default function Preview() {
           </button>
         )}
 
-        <button onClick={handleExport} disabled={exporting} style={styles.btnPrimary(exporting)}>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 10V2M5 5l3-3 3 3"/>
-            <path d="M3 10v3a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3"/>
-          </svg>
-          {exporting ? 'Export…' : 'Exporter'}
-        </button>
+        <div ref={exportMenuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => !exporting && setExportMenu(v => !v)}
+            disabled={exporting}
+            style={{ ...styles.btnPrimary(exporting), gap: 8 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 10V2M5 5l3-3 3 3"/>
+              <path d="M3 10v3a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3"/>
+            </svg>
+            {exporting ? 'Export…' : 'Exporter'}
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+              <path d="M3 5l3 3 3-3"/>
+            </svg>
+          </button>
+
+          {exportMenu && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+              background: '#fff', borderRadius: 10, padding: 4,
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)',
+              border: '1px solid #E8E6E1', minWidth: 160, zIndex: 200,
+            }}>
+              {[
+                { fmt: 'png', label: 'Exporter en PNG' },
+                { fmt: 'pdf', label: 'Exporter en PDF' },
+              ].map(({ fmt, label }) => (
+                <button
+                  key={fmt}
+                  onClick={() => handleExport(fmt)}
+                  style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#1A1E2C', fontWeight: 500, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 10 }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F3F1EC'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                >
+                  {fmt === 'png' ? (
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="2" width="12" height="12" rx="2"/>
+                      <path d="M5 10l2-2.5L9 10l1.5-2 1.5 2"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 2H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6z"/>
+                      <path d="M9 2v4h4"/>
+                    </svg>
+                  )}
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </header>
 
       {/* ── Body ── */}
