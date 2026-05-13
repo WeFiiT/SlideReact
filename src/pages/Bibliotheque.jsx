@@ -18,6 +18,7 @@ const VIEWS = [
   { id: 'niveau',  label: 'Niveau de discipline', field: 'niveau_discipline' },
   { id: 'produit', label: 'Type de produit',      field: 'type_produit'      },
   { id: 'mission', label: 'Type de mission',      field: 'type_mission'      },
+  { id: 'favoris', label: 'Favoris',              field: null                },
 ]
 
 const DATE_OPTIONS = [
@@ -242,7 +243,7 @@ export default function Bibliotheque() {
   , [filteredSlides, user])
 
   const groupedSlides = useMemo(() => {
-    if (activeView === 'all') return []
+    if (activeView === 'all' || activeView === 'favoris') return []
     const view = VIEWS.find(v => v.id === activeView)
     if (!view?.field) return []
 
@@ -445,6 +446,7 @@ export default function Bibliotheque() {
           const active = activeView === v.id
           const icons = {
             all:     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>,
+            favoris: <svg width="14" height="14" viewBox="0 0 16 16" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13.5S1.5 9.5 1.5 5.5a3.5 3.5 0 0 1 6.5-1.8A3.5 3.5 0 0 1 14.5 5.5c0 4-6.5 8-6.5 8z"/></svg>,
             segment: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 15V8l6-6 6 6v7"/><path d="M6 15v-4h4v4"/></svg>,
             niveau:  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="11" width="4" height="4" rx="0.5"/><rect x="6" y="7" width="4" height="8" rx="0.5"/><rect x="11" y="3" width="4" height="12" rx="0.5"/></svg>,
             produit: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1L1 4.5v7L8 15l7-3.5v-7L8 1z"/><path d="M1 4.5L8 8l7-3.5M8 8v7"/></svg>,
@@ -464,6 +466,28 @@ export default function Bibliotheque() {
               }}>
               {icons[v.id]}
               {v.label}
+            </button>
+          )
+        })}
+
+        {/* ── Période ── */}
+        <div style={{ height: 1, background: '#E8E6E1', margin: '16px 0 12px' }} />
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 18px 8px', margin: 0 }}>Période</p>
+        {DATE_OPTIONS.map(o => {
+          const active = dateFilter === o.value
+          return (
+            <button key={o.value} onClick={() => setDateFilter(o.value)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center',
+                padding: '8px 18px', border: 'none', cursor: 'pointer',
+                textAlign: 'left', fontFamily: 'inherit', fontSize: 12,
+                borderLeft: `3px solid ${active ? '#0E2A6B' : 'transparent'}`,
+                background: active ? '#EEF1FA' : 'transparent',
+                color: active ? '#0E2A6B' : '#6E7385',
+                fontWeight: active ? 700 : 500,
+                transition: 'background 0.12s',
+              }}>
+              {o.label}
             </button>
           )
         })}
@@ -554,22 +578,6 @@ export default function Bibliotheque() {
           })}
         </div>
 
-        <div style={{ flex: 1 }} />
-
-        {/* Date */}
-        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-          <select
-            value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)}
-            style={{ height: 34, border: '1px solid #E8E6E1', borderRadius: 999, padding: '0 30px 0 14px', fontSize: 13, color: '#1A1E2C', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit', fontWeight: 500, appearance: 'none', WebkitAppearance: 'none' }}
-          >
-            {DATE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <svg style={{ position: 'absolute', right: 10, pointerEvents: 'none' }} width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 5l3 3 3-3" />
-          </svg>
-        </div>
-
         {hasActiveFilters && (
           <button
             onClick={() => { setSearch(''); setDateFilter('all'); setTypeFilter(null); setStatusFilter(null) }}
@@ -584,6 +592,28 @@ export default function Bibliotheque() {
       {/* ── Sections ── */}
       {loading ? (
         <p style={{ color: '#64748b' }}>Chargement…</p>
+      ) : activeView === 'favoris' ? (
+        /* ── Vue favoris ── */
+        (() => {
+          const favSlides = filteredSlides.filter(s => (s.favorited_by || []).includes(user?.email))
+          return favSlides.length === 0 ? (
+            <p style={{ color: '#94a3b8', fontSize: 13 }}>
+              {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune mission en favori pour le moment.'}
+            </p>
+          ) : (
+            <>
+              <SectionHeader title="Favoris" count={favSlides.length} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {favSlides.map(slide => (
+                  <SlideCard key={slide.id} slide={slide}
+                    onDeleted={handleDeleted} onValidated={handleValidated} onFavorited={handleFavorited}
+                    selectMode={selectMode} selected={selectedIds.includes(slide.id)} onSelect={toggleSelect}
+                  />
+                ))}
+              </div>
+            </>
+          )
+        })()
       ) : activeView !== 'all' ? (
         /* ── Vues groupées ── */
         groupedSlides.length === 0 ? (
