@@ -61,6 +61,7 @@ export default function Bibliotheque() {
   const batchMenuRef                          = useRef(null)
   const [activeView,      setActiveView]      = useState('all')
   const [showDateMenu,    setShowDateMenu]    = useState(false)
+  const [activeSection,   setActiveSection]   = useState(null)
   const dateMenuRef                           = useRef(null)
 
   const toggleSelect = (id) =>
@@ -360,6 +361,29 @@ export default function Bibliotheque() {
   }
 
   const hasActiveFilters = search || dateFilter !== 'all' || typeFilter || statusFilter
+
+  const showToc = activeView !== 'all' && activeView !== 'favoris' && groupedSlides.length > 1
+
+  const scrollToSection = (label) => {
+    const el = document.getElementById(`toc-${encodeURIComponent(label)}`)
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setActiveSection(label) }
+  }
+
+  useEffect(() => {
+    if (!showToc) { setActiveSection(null); return }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find(e => e.isIntersecting)
+        if (visible) setActiveSection(decodeURIComponent(visible.target.id.replace('toc-', '')))
+      },
+      { threshold: 0.1, rootMargin: '-80px 0px -60% 0px' },
+    )
+    groupedSlides.forEach(({ label }) => {
+      const el = document.getElementById(`toc-${encodeURIComponent(label)}`)
+      if (el) observer.observe(el)
+    })
+    return () => observer.disconnect()
+  }, [showToc, groupedSlides])
   const activeDateLabel  = DATE_OPTIONS.find(o => o.value === dateFilter)?.label ?? 'Toutes les dates'
 
   const typeCounts = useMemo(() => {
@@ -578,6 +602,8 @@ export default function Bibliotheque() {
       </div>
 
       {/* ── Sections ── */}
+      <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
       {loading ? (
         <p style={{ color: '#64748b' }}>Chargement…</p>
       ) : activeView === 'favoris' ? (
@@ -609,7 +635,7 @@ export default function Bibliotheque() {
             {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune mission.'}
           </p>
         ) : groupedSlides.map(({ label, count, slides: gs, subGroups }) => (
-          <div key={label} style={{ marginBottom: 44 }}>
+          <div key={label} id={`toc-${encodeURIComponent(label)}`} style={{ marginBottom: 44 }}>
             <SectionHeader title={label} count={count} />
             {subGroups ? (
               /* Segment → Client (deux niveaux) */
@@ -673,6 +699,31 @@ export default function Bibliotheque() {
           )}
         </>
       )}
+
+      </div>{/* end flex content */}
+
+      {/* ── TOC sticky ── */}
+      {showToc && (
+        <div style={{ width: 168, flexShrink: 0, position: 'sticky', top: 24, alignSelf: 'flex-start' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>Dans cette vue</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {groupedSlides.map(({ label, count }) => {
+              const isActive = activeSection === label
+              return (
+                <button key={label} onClick={() => scrollToSection(label)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '6px 10px', background: isActive ? '#EEF1FA' : 'transparent', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', borderLeft: `2px solid ${isActive ? '#0E2A6B' : 'transparent'}`, transition: 'all .12s' }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#F3F1EC' }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}>
+                  <span style={{ fontSize: 12, fontWeight: isActive ? 700 : 500, color: isActive ? '#0E2A6B' : '#6E7385', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: isActive ? '#0E2A6B' : '#94a3b8', background: isActive ? '#DCE3F2' : '#F0EEE9', borderRadius: 999, padding: '1px 5px', flexShrink: 0 }}>{count}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      </div>{/* end flex row */}
 
       {/* ── Barre de sélection flottante ── */}
       {selectMode && (
