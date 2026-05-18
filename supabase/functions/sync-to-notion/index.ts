@@ -57,9 +57,29 @@ Deno.serve(async (req) => {
   }
 
   let slide: any
+  let eventType: string
   try {
     const body = await req.json()
-    slide = body.record
+    eventType = body.type   // 'INSERT' | 'UPDATE' | 'DELETE'
+    slide = body.record     // null for DELETE
+    const oldSlide = body.old_record
+
+    // Suppression : archiver la page Notion correspondante
+    if (eventType === 'DELETE') {
+      if (oldSlide?.notion_page_id) {
+        const res = await fetch(`https://api.notion.com/v1/pages/${oldSlide.notion_page_id}`, {
+          method: 'PATCH',
+          headers: notionHeaders,
+          body: JSON.stringify({ archived: true }),
+        })
+        if (res.ok) {
+          console.log('Notion page archived:', oldSlide.notion_page_id)
+        } else {
+          console.error('Notion archive error:', await res.text())
+        }
+      }
+      return ok
+    }
   } catch (e) {
     console.error('JSON parse error:', e)
     return ok
