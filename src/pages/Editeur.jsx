@@ -63,6 +63,8 @@ export default function Editeur() {
     supabase.from('slides').select('*').eq('id', id).single()
       .then(({ data, error }) => {
         if (error) { console.error(error); setLoading(false); return }
+        console.log('[Editeur] Supabase data.client:', JSON.stringify(data.client))
+        console.log('[Editeur] Supabase data.logo_url:', JSON.stringify(data.logo_url))
         setForm({
           ...EMPTY, ...data,
           contexte:     data.contexte?.length  ? data.contexte  : ['', '', ''],

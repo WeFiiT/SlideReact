@@ -36,7 +36,13 @@ export default function ClientSelector({ client, segmentation, onChange }) {
     supabase.functions.invoke('notion-clients')
       .then(({ data, error }) => {
         if (error) console.error('notion-clients list error:', error)
-        else setClients(Array.isArray(data) ? data : [])
+        else {
+          const list = Array.isArray(data) ? data : []
+          console.log('[ClientSelector] clients chargés:', list.length, '| client prop:', JSON.stringify(client))
+          const found = list.find(c => c.name === client)
+          console.log('[ClientSelector] client trouvé dans la liste:', found ? found.name : 'NON TROUVÉ')
+          setClients(list)
+        }
         setLoading(false)
       })
       .catch(err => { console.error('notion-clients fetch failed:', err); setLoading(false) })
