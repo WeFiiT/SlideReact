@@ -3,9 +3,11 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
+import { uploadSlideToSharePoint, buildSharePointFileUrl } from '../utils/sharepoint'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { getUser } from './Login'
+import { normalizeName } from '../constants'
 
 const TOPBAR_H = 56
 const RAIL_W   = 80
@@ -56,22 +58,71 @@ export default function Preview() {
   const [tick, setTick]                 = useState(0)
   const [exportMenu, setExportMenu]     = useState(false)
   const exportMenuRef                   = useRef(null)
+  const shareMenuRef                    = useRef(null)
   const [fullscreen, setFullscreen]     = useState(false)
   const [shareToast, setShareToast]     = useState(false)
+  const [shareMenu,  setShareMenu]      = useState(false)
   const [railMode, setRailMode]           = useState('slide')
   const [comments, setComments]           = useState([])
   const [selectedField, setSelectedField] = useState(null)
   const [newComment, setNewComment]       = useState('')
   const [postingComment, setPostingComment] = useState(false)
+  const [validated,       setValidated]       = useState(false)
+  const [confirmValidate, setConfirmValidate] = useState(false)
+  const [validating,      setValidating]      = useState(false)
+  const [publishedUrl,    setPublishedUrl]    = useState(null)
+  const [showPublished,   setShowPublished]   = useState(false)
+  const skipSharePoint = useRef(false)
 
   useEffect(() => {
     supabase.from('slides').select('*').eq('id', id).single()
       .then(({ data, error }) => {
         if (error) console.error(error)
-        else setSlide(data)
+        else { setSlide(data); setValidated(!!data?.validated) }
         setLoading(false)
       })
   }, [id])
+
+  const handleValidate = async () => {
+    setValidating(true)
+    skipSharePoint.current = false
+    const next = !validated
+    const { error } = await supabase.from('slides').update({ validated: next }).eq('id', id)
+    if (!error) {
+      setValidated(next)
+      setSlide(prev => ({ ...prev, validated: next }))
+      if (next) {
+        try {
+          const result = await uploadSlideToSharePoint(slide)
+          if (!skipSharePoint.current && result?.webUrl) {
+            await supabase.from('slides').update({ sharepoint_url: result.webUrl }).eq('id', id)
+            setSlide(prev => ({ ...prev, sharepoint_url: result.webUrl }))
+            setPublishedUrl(result.webUrl)
+          }
+        } catch (e) {
+          console.error('SharePoint upload:', e)
+        }
+        if (!skipSharePoint.current) {
+          setConfirmValidate(false)
+          setShowPublished(true)
+        }
+      } else {
+        setConfirmValidate(false)
+      }
+    } else {
+      alert('Erreur lors de la mise à jour.')
+      setConfirmValidate(false)
+    }
+    if (!skipSharePoint.current) setValidating(false)
+  }
+
+  const handleSkipSharePoint = () => {
+    skipSharePoint.current = true
+    setValidating(false)
+    setConfirmValidate(false)
+    setPublishedUrl(null)
+    setShowPublished(true)
+  }
 
   useEffect(() => {
     const upd = () => {
@@ -173,6 +224,13 @@ export default function Preview() {
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [exportMenu])
+
+  useEffect(() => {
+    if (!shareMenu) return
+    const h = (e) => { if (shareMenuRef.current && !shareMenuRef.current.contains(e.target)) setShareMenu(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [shareMenu])
 
   const captureCanvas = async () => {
     if (!slideRef.current) return null
@@ -330,6 +388,10 @@ export default function Preview() {
 
   const slideTitle = slide.card_titre || slide.titre || 'Sans titre'
   const savedLabel = lastSaved ? relativeTime(lastSaved) : null
+  const user       = getUser()
+  const isOwner    = user &&
+    normalizeName(slide.prenom) === user.prenomNorm &&
+    normalizeName(slide.nom)    === user.nomNorm
 
   if (fullscreen) {
     const fsScale = Math.min(window.innerWidth / 1280, window.innerHeight / 720)
@@ -387,14 +449,42 @@ export default function Preview() {
 
         <div style={{ flex: 1 }} />
 
-        <div style={{ position: 'relative' }}>
-          <button onClick={handleShare} style={styles.btnSecondary}>
+        <div ref={shareMenuRef} style={{ position: 'relative' }}>
+          <button onClick={() => setShareMenu(v => !v)} style={{ ...styles.btnSecondary, gap: 6 }}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="4" r="1.8"/><circle cx="4" cy="8" r="1.8"/><circle cx="12" cy="12" r="1.8"/>
               <path d="M10.3 4.9L5.7 7.1M10.3 11.1L5.7 8.9"/>
             </svg>
             Partager
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 5l3 3 3-3"/>
+            </svg>
           </button>
+          {shareMenu && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: '#fff', borderRadius: 10, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)', border: '1px solid #E8E6E1', minWidth: 190, zIndex: 200 }}>
+              <button onClick={() => { setShareMenu(false); handleShare() }}
+                style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#1A1E2C', fontWeight: 500, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 10 }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F3F1EC'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6h12"/>
+                </svg>
+                Copier le lien aperçu
+              </button>
+              {validated && (
+                <a href={slide.sharepoint_url || buildSharePointFileUrl(slide)} target="_blank" rel="noopener noreferrer"
+                  style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#1A1E2C', fontWeight: 500, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', boxSizing: 'border-box' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F3F1EC'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  onClick={() => setShareMenu(false)}>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3M9 2h5v5M14 2l-7 7"/>
+                  </svg>
+                  Voir sur SharePoint
+                </a>
+              )}
+            </div>
+          )}
           {shareToast && (
             <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#1A1E2C', color: '#fff', fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 8, whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 300 }}>
               ✓ Lien copié !
@@ -424,6 +514,21 @@ export default function Preview() {
             <path d="M2 5V2h3M11 2h3v3M14 11v3h-3M5 14H2v-3"/>
           </svg>
         </button>
+
+        {isOwner && (
+          <button
+            onClick={() => setConfirmValidate(true)}
+            style={{
+              height: 34, padding: '0 14px', borderRadius: 8, border: 'none',
+              background: validated ? '#fef3c7' : '#dcfce7',
+              color: validated ? '#92521A' : '#16a34a',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            {validated ? '● Ready' : '✓ Valider'}
+          </button>
+        )}
 
         <div ref={exportMenuRef} style={{ position: 'relative' }}>
           <button
@@ -613,6 +718,68 @@ export default function Preview() {
           )}
         </main>
       </div>
+
+      {/* ── Modale confirmation validation ── */}
+      {confirmValidate && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+          onClick={(e) => { if (e.target === e.currentTarget && !validating) setConfirmValidate(false) }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 8 }}>
+              {validated ? 'Retirer la validation ?' : 'Valider cette mission ?'}
+            </div>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
+              {validated
+                ? <><strong>« {slideTitle} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
+                : <><strong>« {slideTitle} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et <strong>publiée automatiquement sur SharePoint</strong> dans le dossier des références WeFiiT.</>
+              }
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={handleValidate} disabled={validating}
+                style={{ flex: 1, background: validated ? '#92521A' : '#16a34a', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: validating ? 'default' : 'pointer', opacity: validating ? 0.7 : 1, fontFamily: 'inherit' }}>
+                {validating ? 'Publication en cours…' : validated ? 'Retirer la validation' : 'Confirmer et publier'}
+              </button>
+              <button
+                onClick={validating ? handleSkipSharePoint : () => setConfirmValidate(false)}
+                style={{ flex: 1, background: '#f1f5f9', color: validating ? '#92521A' : '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {validating ? 'Valider sans SharePoint' : 'Annuler'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale succès publication SharePoint ── */}
+      {showPublished && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPublished(false) }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 17, color: '#0E2A6B', marginBottom: 8 }}>Mission publiée !</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
+              <strong>« {slideTitle} »</strong> est maintenant marquée <strong style={{ color: '#16a34a' }}>Ready</strong> et disponible sur SharePoint.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {publishedUrl && (
+                <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#0E2A6B', color: '#fff', borderRadius: 8, padding: '11px 0', fontWeight: 700, fontSize: 14, textDecoration: 'none', fontFamily: 'inherit' }}>
+                  Voir sur SharePoint
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3M9 2h5v5M14 2l-7 7"/>
+                  </svg>
+                </a>
+              )}
+              <button onClick={() => setShowPublished(false)}
+                style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '11px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

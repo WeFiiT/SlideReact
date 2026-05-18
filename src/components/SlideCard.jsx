@@ -5,7 +5,7 @@ import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
 import { normalizeName } from '../constants'
 import { getUser } from '../pages/Login'
 import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
-import { uploadSlideToSharePoint } from '../utils/sharepoint'
+import { uploadSlideToSharePoint, buildSharePointFileUrl } from '../utils/sharepoint'
 
 const THUMB_W  = 140
 const THUMB_H  = Math.round(THUMB_W * 9 / 16)   // 79px
@@ -58,8 +58,9 @@ const primaryBtnStyle = {
 
 export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, selectMode = false, selected = false, onSelect }) {
   const navigate = useNavigate()
-  const menuRef  = useRef(null)
-  const user     = getUser()
+  const menuRef        = useRef(null)
+  const skipSharePoint = useRef(false)
+  const user           = getUser()
   const isFav    = user && (slide.favorited_by || []).includes(user.email)
 
   const [hover,           setHover]           = useState(false)
@@ -112,6 +113,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
 
   const handleValidate = async () => {
     setValidating(true)
+    skipSharePoint.current = false
     const next = !validated
     const { error } = await supabase.from('slides').update({ validated: next }).eq('id', slide.id)
     if (!error) {
@@ -120,13 +122,17 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
       if (next) {
         try {
           const result = await uploadSlideToSharePoint(slide)
-          setPublishedUrl(result?.webUrl || null)
+          if (!skipSharePoint.current && result?.webUrl) {
+            await supabase.from('slides').update({ sharepoint_url: result.webUrl }).eq('id', slide.id)
+            setPublishedUrl(result.webUrl)
+          }
         } catch (e) {
           console.error('SharePoint upload:', e)
-          setPublishedUrl(null)
         }
-        setConfirmValidate(false)
-        setShowPublished(true)
+        if (!skipSharePoint.current) {
+          setConfirmValidate(false)
+          setShowPublished(true)
+        }
       } else {
         setConfirmValidate(false)
       }
@@ -134,7 +140,15 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
       alert('Erreur lors de la mise à jour.')
       setConfirmValidate(false)
     }
+    if (!skipSharePoint.current) setValidating(false)
+  }
+
+  const handleSkipSharePoint = () => {
+    skipSharePoint.current = true
     setValidating(false)
+    setConfirmValidate(false)
+    setPublishedUrl(null)
+    setShowPublished(true)
   }
 
   const handleDelete = async () => {
@@ -324,7 +338,23 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
                     <IconKebab />
                   </button>
                   {showMenu && (
-                    <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, background: '#fff', borderRadius: 10, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)', border: '1px solid #f1f5f9', minWidth: 180, zIndex: 100 }}>
+                    <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, background: '#fff', borderRadius: 10, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)', border: '1px solid #f1f5f9', minWidth: 200, zIndex: 100 }}>
+                      {validated && (
+                        <a
+                          href={slide.sharepoint_url || buildSharePointFileUrl(slide)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => { e.stopPropagation(); setShowMenu(false) }}
+                          style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#0E2A6B', fontWeight: 500, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', boxSizing: 'border-box' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#EEF1FA'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#0E2A6B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3M9 2h5v5M14 2l-7 7"/>
+                          </svg>
+                          Voir sur SharePoint
+                        </a>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmDelete(true) }}
                         style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#dc2626', fontWeight: 600, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit' }}
@@ -375,9 +405,10 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
                 style={{ flex: 1, background: validated ? '#92521A' : '#16a34a', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: validating ? 'default' : 'pointer', opacity: validating ? 0.7 : 1, fontFamily: 'inherit' }}>
                 {validating ? 'Publication en cours…' : validated ? 'Retirer la validation' : 'Confirmer et publier'}
               </button>
-              <button onClick={() => setConfirmValidate(false)} disabled={validating}
-                style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-                Annuler
+              <button
+                onClick={validating ? handleSkipSharePoint : () => setConfirmValidate(false)}
+                style={{ flex: 1, background: '#f1f5f9', color: validating ? '#92521A' : '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {validating ? 'Valider sans SharePoint' : 'Annuler'}
               </button>
             </div>
           </div>

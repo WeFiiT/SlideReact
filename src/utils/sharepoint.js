@@ -42,6 +42,13 @@ async function getToken() {
   return result.accessToken
 }
 
+// Construit l'URL web du fichier SharePoint à partir des données de la slide
+export function buildSharePointFileUrl(slide) {
+  const filename = `${buildPptxFilename(slide)}.pptx`
+  const parts = [...SP_FOLDER.split('/'), filename]
+  return `https://${SP_HOST}${SP_SITE}/Shared%20Documents/${parts.map(encodeURIComponent).join('/')}`
+}
+
 // Génère le PPTX et l'uploade vers le dossier SharePoint cible
 export async function uploadSlideToSharePoint(slide) {
   const pptx     = await buildNativePptx([slide])
