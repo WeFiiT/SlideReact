@@ -234,8 +234,17 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
   const handleDelete = async () => {
     setDeleting(true)
     const { error } = await supabase.from('slides').delete().eq('id', slide.id)
-    if (!error) { onDeleted(slide.id) }
-    else { setDeleting(false); setConfirmDelete(false); alert('Erreur lors de la suppression.') }
+    if (!error) {
+      if (slide.notion_page_id) {
+        supabase.functions.invoke('notion-archive', { body: { notionPageId: slide.notion_page_id } })
+          .catch(err => console.error('Notion archive:', err))
+      }
+      onDeleted(slide.id)
+    } else {
+      setDeleting(false)
+      setConfirmDelete(false)
+      alert('Erreur lors de la suppression.')
+    }
   }
 
   const handleFavorite = async (e) => {

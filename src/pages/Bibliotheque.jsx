@@ -70,6 +70,13 @@ export default function Bibliotheque() {
     setBulkDeleting(true)
     const { error } = await supabase.from('slides').delete().in('id', selectedIds)
     if (!error) {
+      const notionIds = slides
+        .filter(s => selectedIds.includes(s.id) && s.notion_page_id)
+        .map(s => s.notion_page_id)
+      notionIds.forEach(notionPageId =>
+        supabase.functions.invoke('notion-archive', { body: { notionPageId } })
+          .catch(err => console.error('Notion archive:', err))
+      )
       setSlides(prev => prev.filter(s => !selectedIds.includes(s.id)))
       exitSelectMode()
       setConfirmBulkDel(false)
