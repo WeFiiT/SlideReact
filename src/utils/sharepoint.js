@@ -8,6 +8,19 @@ const SP_SITE   = '/sites/GROWTH'
 const SP_FOLDER = 'General/3 - RÉFÉRENCES/Toutes nos références'
 const SCOPES    = ['https://graph.microsoft.com/Files.ReadWrite.All']
 
+// Cache du site ID (résolu une seule fois par session)
+let cachedSiteId = null
+async function getSiteId(token) {
+  if (cachedSiteId) return cachedSiteId
+  const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_SITE}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(`Résolution site SharePoint échouée (${res.status})`)
+  const json = await res.json()
+  cachedSiteId = json.id
+  return cachedSiteId
+}
+
 // Singleton MSAL instance, initialized once
 let msalPromise = null
 function getMsal() {
@@ -75,10 +88,9 @@ export async function uploadSlideToSharePoint(slide, token = null) {
   const filename = `${buildPptxFilename(slide)}.pptx`
   if (!token) token = await getToken()
 
+  const siteId    = await getSiteId(token)
   const encodedPath = [...SP_FOLDER.split('/'), filename].map(encodeURIComponent).join('/')
-  const url = `https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_SITE}:/drive/root:/${encodedPath}:/content`
-  console.log('[SharePoint] Upload URL:', url)
-  console.log('[SharePoint] Token (10 premiers chars):', token?.slice(0, 10))
+  const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}:/content`
 
   const res = await fetch(url, {
     method:  'PUT',
@@ -91,7 +103,6 @@ export async function uploadSlideToSharePoint(slide, token = null) {
 
   if (!res.ok) {
     const detail = await res.text()
-    console.error('[SharePoint] Erreur upload:', res.status, detail)
     throw new Error(`Upload SharePoint échoué (${res.status}): ${detail}`)
   }
 

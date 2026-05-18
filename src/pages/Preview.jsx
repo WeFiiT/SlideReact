@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
-import { uploadSlideToSharePoint, deleteSlideFromSharePoint, buildSharePointFileUrl, getToken } from '../utils/sharepoint'
+import { uploadSlideToSharePoint, buildSharePointFileUrl, getToken } from '../utils/sharepoint'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { getUser } from './Login'
@@ -91,28 +91,25 @@ export default function Preview() {
     setValidating(true)
     skipSharePoint.current  = false
     supabaseUpdated.current = false
-    isRemovingRef.current   = validated
     const next = !validated
 
-    // Acquérir le token immédiatement (contexte clic) pour éviter le blocage popup navigateur
-    let spToken = null
-    try {
-      setSpStep('connecting')
-      spToken = await getToken()
-    } catch (e) {
-      console.error('Token SharePoint:', e)
-    }
-    setSpStep(null)
+    if (next) {
+      // Token uniquement pour la validation (upload SharePoint)
+      let spToken = null
+      try {
+        setSpStep('connecting')
+        spToken = await getToken()
+      } catch (e) {
+        console.error('Token SharePoint:', e)
+      }
+      setSpStep(null)
+      if (skipSharePoint.current) return
 
-    // Si l'utilisateur a cliqué "skip" pendant la connexion, le skip handler gère tout
-    if (skipSharePoint.current) return
-
-    const { error } = await supabase.from('slides').update({ validated: next }).eq('id', id)
-    if (!error) {
-      supabaseUpdated.current = true
-      setValidated(next)
-      setSlide(prev => ({ ...prev, validated: next }))
-      if (next) {
+      const { error } = await supabase.from('slides').update({ validated: true }).eq('id', id)
+      if (!error) {
+        supabaseUpdated.current = true
+        setValidated(true)
+        setSlide(prev => ({ ...prev, validated: true }))
         try {
           setSpStep('uploading')
           const result = await uploadSlideToSharePoint(slide, spToken)
@@ -130,50 +127,37 @@ export default function Preview() {
           setShowPublished(true)
         }
       } else {
-        if (slide.sharepoint_url && !skipSharePoint.current) {
-          try {
-            setSpStep('deleting')
-            await deleteSlideFromSharePoint(slide, spToken)
-            await supabase.from('slides').update({ sharepoint_url: null }).eq('id', id)
-            setSlide(prev => ({ ...prev, sharepoint_url: null }))
-            setUnvalidateToast({ ok: true, msg: 'Slide retirée et fichier supprimé de SharePoint.' })
-          } catch (e) {
-            console.error('SharePoint delete:', e)
-            setUnvalidateToast({ ok: false, msg: 'Slide retirée. Échec de la suppression SharePoint.' })
-          }
-          setSpStep(null)
-          setTimeout(() => setUnvalidateToast(null), 4000)
-        }
-        if (!skipSharePoint.current) setConfirmValidate(false)
+        alert('Erreur lors de la mise à jour.')
+        setConfirmValidate(false)
       }
+      if (!skipSharePoint.current) setValidating(false)
     } else {
-      alert('Erreur lors de la mise à jour.')
+      // Retrait simple : pas de SharePoint
+      const { error } = await supabase.from('slides').update({ validated: false }).eq('id', id)
+      if (!error) {
+        setValidated(false)
+        setSlide(prev => ({ ...prev, validated: false }))
+        setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
+        setTimeout(() => setUnvalidateToast(null), 3000)
+      } else {
+        alert('Erreur lors de la mise à jour.')
+      }
       setConfirmValidate(false)
+      setValidating(false)
     }
-    if (!skipSharePoint.current) setValidating(false)
   }
 
   const handleSkipSharePoint = () => {
     skipSharePoint.current = true
     setValidating(false)
     setConfirmValidate(false)
-    if (isRemovingRef.current) {
-      if (!supabaseUpdated.current) {
-        setValidated(false)
-        setSlide(prev => ({ ...prev, validated: false }))
-        supabase.from('slides').update({ validated: false }).eq('id', id)
-      }
-      setUnvalidateToast({ ok: true, msg: 'Slide retirée. Fichier SharePoint non supprimé.' })
-      setTimeout(() => setUnvalidateToast(null), 4000)
-    } else {
-      if (!supabaseUpdated.current) {
-        setValidated(true)
-        setSlide(prev => ({ ...prev, validated: true }))
-        supabase.from('slides').update({ validated: true }).eq('id', id)
-      }
-      setPublishedUrl(null)
-      setShowPublished(true)
+    if (!supabaseUpdated.current) {
+      setValidated(true)
+      setSlide(prev => ({ ...prev, validated: true }))
+      supabase.from('slides').update({ validated: true }).eq('id', id)
     }
+    setPublishedUrl(null)
+    setShowPublished(true)
   }
 
   useEffect(() => {
@@ -789,7 +773,7 @@ export default function Preview() {
             </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
               {validated
-                ? <><strong>« {slideTitle} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.{slide.sharepoint_url && <> <strong>Le fichier sera également supprimé du dossier SharePoint.</strong></>}</>
+                ? <><strong>« {slideTitle} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
                 : <><strong>« {slideTitle} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et <strong>publiée automatiquement sur SharePoint</strong> dans le dossier des références WeFiiT.</>
               }
             </div>
