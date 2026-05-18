@@ -39,7 +39,8 @@ export default function Bibliotheque() {
   const [creating, setCreating]       = useState(false)
   const [newSujet, setNewSujet]       = useState('')
   const [newOutil, setNewOutil]       = useState('')
-  const [draft, setDraft]         = useState({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
+  const emptyDraft = () => ({ prenom: user?.prenom || '', nom: user?.nom || '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
+  const [draft, setDraft]         = useState(emptyDraft)
 
   /* Filtres */
   const [search,       setSearch]       = useState('')
@@ -349,12 +350,12 @@ export default function Bibliotheque() {
     if (error) { alert('Erreur : ' + error.message); setCreating(false); return }
     setCreating(false)
     setShowModal(false)
-    setDraft({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
+    setDraft(emptyDraft())
     navigate(`/preview/${data.id}?edit=1`)
   }
 
   const openModal = () => {
-    setDraft({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
+    setDraft(emptyDraft())
     setModalStep(1)
     setNewSujet('')
     setNewOutil('')
