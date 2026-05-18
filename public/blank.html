@@ -1,10 +1,79 @@
 <!DOCTYPE html>
-<html>
-<head><title></title></head>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Publication SharePoint…</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: #FBFAF7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #1A1E2C;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #E8E6E1;
+      border-radius: 16px;
+      padding: 40px 48px;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(20, 28, 60, 0.07);
+      max-width: 360px;
+      width: 100%;
+    }
+    .logo {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0E2A6B;
+      letter-spacing: -0.5px;
+      margin-bottom: 28px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #E8E6E1;
+      border-top-color: #0E2A6B;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 24px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #0E2A6B;
+      margin-bottom: 8px;
+    }
+    .sub {
+      font-size: 13px;
+      color: #6E7385;
+      line-height: 1.5;
+    }
+  </style>
+</head>
 <body>
-  <script src="/msal-redirect-bridge.min.js"></script>
+  <div class="card">
+    <div class="logo">WeMission</div>
+    <div class="spinner"></div>
+    <div class="label">Publication SharePoint en cours…</div>
+    <div class="sub">Connexion à Microsoft en cours.<br>Cette fenêtre se fermera automatiquement.</div>
+  </div>
+  <script src="/msal-browser.min.js"></script>
   <script>
-    window.msalRedirectBridge.broadcastResponseToMainFrame().catch(function() {});
+    var msalInstance = new window.msal.PublicClientApplication({
+      auth: {
+        clientId: '44ce1d99-69ec-403a-a6c1-feda78c0cbc7',
+        authority: 'https://login.microsoftonline.com/28dd0381-5845-4bf6-9beb-60cf464a2f0d',
+        redirectUri: window.location.origin + '/blank.html',
+      },
+      cache: { cacheLocation: 'sessionStorage' },
+    });
+    msalInstance.initialize().then(function() {
+      return msalInstance.handleRedirectPromise();
+    }).catch(function(e) { console.error('MSAL blank:', e); });
   </script>
 </body>
 </html>

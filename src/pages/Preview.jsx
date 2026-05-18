@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
-import { uploadSlideToSharePoint, buildSharePointFileUrl, getToken } from '../utils/sharepoint'
+import { uploadSlideToSharePoint, deleteSlideFromSharePoint, buildSharePointFileUrl, getToken } from '../utils/sharepoint'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { getUser } from './Login'
@@ -132,13 +132,39 @@ export default function Preview() {
       }
       if (!skipSharePoint.current) setValidating(false)
     } else {
-      // Retrait simple : pas de SharePoint
+      // Retrait : token si une URL SharePoint existe
+      let spToken = null
+      if (slide.sharepoint_url) {
+        try {
+          setSpStep('connecting')
+          spToken = await getToken()
+        } catch (e) {
+          console.error('Token SharePoint:', e)
+        }
+        setSpStep(null)
+      }
+
       const { error } = await supabase.from('slides').update({ validated: false }).eq('id', id)
       if (!error) {
         setValidated(false)
         setSlide(prev => ({ ...prev, validated: false }))
-        setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
-        setTimeout(() => setUnvalidateToast(null), 3000)
+        if (slide.sharepoint_url) {
+          try {
+            setSpStep('deleting')
+            await deleteSlideFromSharePoint(slide, spToken)
+            await supabase.from('slides').update({ sharepoint_url: null }).eq('id', id)
+            setSlide(prev => ({ ...prev, sharepoint_url: null }))
+            setUnvalidateToast({ ok: true, msg: 'Slide retirée et supprimée de SharePoint.' })
+          } catch (e) {
+            console.error('SharePoint delete:', e)
+            setUnvalidateToast({ ok: false, msg: 'Slide retirée. Échec suppression SharePoint.' })
+          }
+          setSpStep(null)
+          setTimeout(() => setUnvalidateToast(null), 4000)
+        } else {
+          setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
+          setTimeout(() => setUnvalidateToast(null), 3000)
+        }
       } else {
         alert('Erreur lors de la mise à jour.')
       }
@@ -773,7 +799,7 @@ export default function Preview() {
             </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
               {validated
-                ? <><strong>« {slideTitle} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
+                ? <><strong>« {slideTitle} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.{slide.sharepoint_url && <> Le fichier SharePoint sera également supprimé.</>}</>
                 : <><strong>« {slideTitle} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et <strong>publiée automatiquement sur SharePoint</strong> dans le dossier des références WeFiiT.</>
               }
             </div>

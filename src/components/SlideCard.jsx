@@ -5,7 +5,7 @@ import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
 import { normalizeName } from '../constants'
 import { getUser } from '../pages/Login'
 import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
-import { uploadSlideToSharePoint, buildSharePointFileUrl, getToken } from '../utils/sharepoint'
+import { uploadSlideToSharePoint, deleteSlideFromSharePoint, buildSharePointFileUrl, getToken } from '../utils/sharepoint'
 
 const THUMB_W  = 140
 const THUMB_H  = Math.round(THUMB_W * 9 / 16)   // 79px
@@ -161,13 +161,39 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
       }
       if (!skipSharePoint.current) setValidating(false)
     } else {
-      // Retrait simple : pas de SharePoint
+      // Retrait : token si une URL SharePoint existe
+      let spToken = null
+      if (spUrl) {
+        try {
+          setSpStep('connecting')
+          spToken = await getToken()
+        } catch (e) {
+          console.error('Token SharePoint:', e)
+        }
+        setSpStep(null)
+      }
+
       const { error } = await supabase.from('slides').update({ validated: false }).eq('id', slide.id)
       if (!error) {
         setValidated(false)
         onValidated?.(slide.id, false)
-        setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
-        setTimeout(() => setUnvalidateToast(null), 3000)
+        if (spUrl) {
+          try {
+            setSpStep('deleting')
+            await deleteSlideFromSharePoint({ ...slide }, spToken)
+            await supabase.from('slides').update({ sharepoint_url: null }).eq('id', slide.id)
+            setSpUrl(null)
+            setUnvalidateToast({ ok: true, msg: 'Slide retirée et supprimée de SharePoint.' })
+          } catch (e) {
+            console.error('SharePoint delete:', e)
+            setUnvalidateToast({ ok: false, msg: 'Slide retirée. Échec suppression SharePoint.' })
+          }
+          setSpStep(null)
+          setTimeout(() => setUnvalidateToast(null), 4000)
+        } else {
+          setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
+          setTimeout(() => setUnvalidateToast(null), 3000)
+        }
       } else {
         alert('Erreur lors de la mise à jour.')
       }
@@ -445,7 +471,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
             </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
               {validated
-                ? <><strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
+                ? <><strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.{spUrl && <> Le fichier SharePoint sera également supprimé.</>}</>
                 : <><strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et <strong>publiée automatiquement sur SharePoint</strong> dans le dossier des références WeFiiT.</>
               }
             </div>
