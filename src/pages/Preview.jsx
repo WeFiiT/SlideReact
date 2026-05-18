@@ -538,7 +538,7 @@ export default function Preview() {
         <div style={{ flex: 1 }} />
 
         {/* ── Groupe vue ── */}
-        {railMode !== 'comments' && (!textEditMode ? (
+        {railMode !== 'comments' && !validated && (!textEditMode ? (
           <button onClick={() => setTextEditMode(true)} style={{ ...styles.btnSecondary, gap: 6 }}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 5V3.5h8V5M8 3.5v9M6 12.5h4"/>

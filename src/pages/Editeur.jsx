@@ -74,6 +74,7 @@ export default function Editeur() {
           prenom:            data.prenom            || '',
           nom:               data.nom               || '',
           card_titre:        data.card_titre        || '',
+          logo_url:          data.logo_url          || '',
           client:            data.client            || '',
           segmentation:      data.segmentation      || '',
           discipline:        data.discipline        || '',
@@ -154,9 +155,11 @@ export default function Editeur() {
   }
 
   // Déclaré avant handleSave pour éviter la TDZ lors de l'appel
-  const isOwner = !loading && isEditing && user &&
-    normalizeName(form.prenom) === user.prenomNorm &&
-    normalizeName(form.nom)    === user.nomNorm
+  const isOwner  = !loading && isEditing && user && (
+    form.owner_email === user.email ||
+    (!form.owner_email && normalizeName(form.prenom) === user.prenomNorm && normalizeName(form.nom) === user.nomNorm)
+  )
+  const isLocked = isEditing && !!form.validated
 
   const validate = () => {
     const errs = {}
@@ -248,23 +251,6 @@ export default function Editeur() {
         )}
 
         <div style={{ flex: 1 }} />
-
-        {isOwner && (
-          <button
-            onClick={() => setConfirmValidate(true)}
-            style={{
-              ...styles.btnSecondary,
-              color: form.validated ? '#92521A' : '#3EAE6E',
-              borderColor: form.validated ? '#C9956A' : '#3EAE6E',
-            }}
-          >
-            {form.validated ? 'Retirer la validation' : '✓ Valider la slide'}
-          </button>
-        )}
-
-        <button onClick={handleSave} disabled={saving} style={styles.btnPrimary(saving)}>
-          {saving ? 'Sauvegarde…' : 'Sauvegarder'}
-        </button>
       </header>
 
       {/* Modale de validation */}
@@ -345,12 +331,33 @@ export default function Editeur() {
         {/* Workspace – scrollable form */}
         <main style={{ flex: 1, overflowY: 'auto', background: '#F5F4F0' }}>
           <div style={{ maxWidth: 820, margin: '0 auto', padding: '36px 24px 80px' }}>
+
+            {/* ── Bannière slide verrouillée ── */}
+            {isLocked && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#FFF8F0', border: '1.5px solid #F5C28A', borderRadius: 10, padding: '14px 20px', marginBottom: 28 }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#E97433" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <rect x="5" y="9" width="10" height="8" rx="1.5"/>
+                  <path d="M7 9V6a3 3 0 0 1 6 0v3"/>
+                </svg>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#92521A', marginBottom: 2 }}>Slide verrouillée — statut Ready</div>
+                  <div style={{ fontSize: 12, color: '#B06820', lineHeight: 1.5 }}>Cette slide est validée et ne peut plus être modifiée. Pour la rééditer, retirez d'abord la validation depuis la vue Slide.</div>
+                </div>
+                <button onClick={() => navigate(`/preview/${id}`)}
+                  style={{ background: '#E97433', color: '#fff', border: 'none', borderRadius: 7, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  Aller à la slide →
+                </button>
+              </div>
+            )}
+
             <h1 style={{ margin: '0 0 8px', color: '#0E2A6B', fontSize: 22, fontWeight: 800, fontFamily: "'Publica Play', Arial, sans-serif" }}>
               {isEditing ? 'Modifier la slide' : 'Nouvelle slide'}
             </h1>
             <p style={{ margin: '0 0 36px', color: '#6E7385', fontSize: 13 }}>
               Remplis les sections ci-dessous — chaque champ correspond à une zone de la slide.
             </p>
+
+            <div style={{ pointerEvents: isLocked ? 'none' : 'auto', opacity: isLocked ? 0.55 : 1, transition: 'opacity .2s' }}>
 
             {/* ── Carte bibliothèque ── */}
             <Card icon="🗂️" color="#475569" title="Carte bibliothèque" desc="Métadonnées affichées dans la bibliothèque — pas sur la slide">
@@ -368,7 +375,11 @@ export default function Editeur() {
                 segmentation={form.segmentation}
                 onChange={({ client, segmentation, logo_url }) => {
                   setForm(f => {
-                    const updated = { ...f, client, segmentation, logo_url: logo_url || f.logo_url || '' }
+                    const clientChanged = client !== f.client
+                    const updated = {
+                      ...f, client, segmentation,
+                      logo_url: clientChanged ? (logo_url || f.logo_url || '') : (f.logo_url || ''),
+                    }
                     schedAutoSave(updated)
                     return updated
                   })
@@ -651,17 +662,21 @@ export default function Editeur() {
               </div>
             </Card>
 
+            </div>{/* fin du div pointerEvents */}
+
             {/* ── Sauvegarder ── */}
-            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-              <button onClick={handleSave} disabled={saving}
-                style={{ background: '#E97433', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 32px', fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Sauvegarde…' : '✓ Sauvegarder'}
-              </button>
-              <button onClick={() => navigate(isEditing ? `/preview/${id}` : '/')}
-                style={{ background: '#E8E6E1', color: '#6E7385', border: 'none', borderRadius: 8, padding: '12px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                Annuler
-              </button>
-            </div>
+            {!isLocked && (
+              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                <button onClick={handleSave} disabled={saving}
+                  style={{ background: '#E97433', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 32px', fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit', opacity: saving ? 0.7 : 1 }}>
+                  {saving ? 'Sauvegarde…' : '✓ Sauvegarder'}
+                </button>
+                <button onClick={() => navigate(isEditing ? `/preview/${id}` : '/')}
+                  style={{ background: '#E8E6E1', color: '#6E7385', border: 'none', borderRadius: 8, padding: '12px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Annuler
+                </button>
+              </div>
+            )}
           </div>
         </main>
       </div>
