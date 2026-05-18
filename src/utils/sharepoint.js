@@ -1,5 +1,19 @@
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser'
-import { buildNativePptx, buildPptxFilename } from './exportPptx'
+
+function buildPptxFilename(slide) {
+  const date = slide.created_at
+    ? (() => {
+        const d  = new Date(slide.created_at)
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        return `${mm}-${d.getFullYear()}`
+      })()
+    : ''
+  const consultant = [slide.prenom, slide.nom ? slide.nom.toUpperCase() : ''].filter(Boolean).join(' ')
+  return ['REF', slide.client || '', slide.type_mission || '', slide.card_titre || slide.titre || '', date, consultant]
+    .filter(Boolean)
+    .join('_')
+    .replace(/[?%*:|"<>]/g, '-')
+}
 
 const CLIENT_ID = '44ce1d99-69ec-403a-a6c1-feda78c0cbc7'
 const TENANT_ID = '28dd0381-5845-4bf6-9beb-60cf464a2f0d'
@@ -83,6 +97,7 @@ export async function deleteSlideFromSharePoint(slide, token = null) {
 // Génère le PPTX et l'uploade vers le dossier SharePoint cible
 // token optionnel : pré-acquis dans le contexte du clic pour éviter le blocage popup
 export async function uploadSlideToSharePoint(slide, token = null) {
+  const { buildNativePptx } = await import('./exportPptx')
   const pptx     = await buildNativePptx([slide])
   const blob     = await pptx.getBlob()
   const filename = `${buildPptxFilename(slide)}.pptx`

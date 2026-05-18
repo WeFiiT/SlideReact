@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
-import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
-import { uploadSlideToSharePoint, deleteSlideFromSharePoint, buildSharePointFileUrl, getToken } from '../utils/sharepoint'
+import { uploadSlideToSharePoint, deleteSlideFromSharePoint, getToken } from '../utils/sharepoint'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { getUser } from './Login'
@@ -93,9 +90,13 @@ export default function Preview() {
     skipSharePoint.current  = false
     supabaseUpdated.current = false
     const next = !validated
+    isRemovingRef.current   = !next
 
     if (next) {
-      // Token uniquement pour la validation (upload SharePoint)
+      // Mise à jour optimiste immédiate
+      setValidated(true)
+      setSlide(prev => ({ ...prev, validated: true }))
+
       let spToken = null
       try {
         setSpStep('connecting')
@@ -109,8 +110,6 @@ export default function Preview() {
       const { error } = await supabase.from('slides').update({ validated: true }).eq('id', id)
       if (!error) {
         supabaseUpdated.current = true
-        setValidated(true)
-        setSlide(prev => ({ ...prev, validated: true }))
         try {
           setSpStep('uploading')
           const result = await uploadSlideToSharePoint(slide, spToken)
@@ -128,12 +127,18 @@ export default function Preview() {
           setShowPublished(true)
         }
       } else {
+        // Revert optimiste
+        setValidated(false)
+        setSlide(prev => ({ ...prev, validated: false }))
         alert('Erreur lors de la mise à jour.')
         setConfirmValidate(false)
       }
       if (!skipSharePoint.current) setValidating(false)
     } else {
-      // Retrait : token si une URL SharePoint existe
+      // Mise à jour optimiste immédiate
+      setValidated(false)
+      setSlide(prev => ({ ...prev, validated: false }))
+
       let spToken = null
       if (slide.sharepoint_url) {
         try {
@@ -147,8 +152,7 @@ export default function Preview() {
 
       const { error } = await supabase.from('slides').update({ validated: false }).eq('id', id)
       if (!error) {
-        setValidated(false)
-        setSlide(prev => ({ ...prev, validated: false }))
+        supabaseUpdated.current = true
         if (slide.sharepoint_url) {
           try {
             setSpStep('deleting')
@@ -167,6 +171,9 @@ export default function Preview() {
           setTimeout(() => setUnvalidateToast(null), 3000)
         }
       } else {
+        // Revert optimiste
+        setValidated(true)
+        setSlide(prev => ({ ...prev, validated: true }))
         alert('Erreur lors de la mise à jour.')
       }
       setConfirmValidate(false)
@@ -178,6 +185,11 @@ export default function Preview() {
     skipSharePoint.current = true
     setValidating(false)
     setConfirmValidate(false)
+    if (isRemovingRef.current) {
+      setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
+      setTimeout(() => setUnvalidateToast(null), 3000)
+      return
+    }
     if (!supabaseUpdated.current) {
       setValidated(true)
       setSlide(prev => ({ ...prev, validated: true }))
@@ -215,8 +227,8 @@ export default function Preview() {
   }, [editParam, slide, loading])
 
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60_000)
-    return () => clearInterval(id)
+    const intervalId = setInterval(() => setTick(t => t + 1), 60_000)
+    return () => clearInterval(intervalId)
   }, [])
 
   // Flush pending save on unmount
@@ -319,6 +331,7 @@ export default function Preview() {
 
   const captureCanvas = async () => {
     if (!slideRef.current) return null
+    const { default: html2canvas } = await import('html2canvas')
     await document.fonts.ready
     const wrapper = document.createElement('div')
     Object.assign(wrapper.style, {
@@ -355,7 +368,7 @@ export default function Preview() {
     if (!slideRef.current) return
     setExporting(true)
     try {
-      const canvas = await captureCanvas()
+      const [canvas, { jsPDF }] = await Promise.all([captureCanvas(), import('jspdf')])
       if (!canvas) return
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 167.0625] })
@@ -368,6 +381,7 @@ export default function Preview() {
   const exportPPTX = async () => {
     setExporting(true)
     try {
+      const { buildNativePptx, buildPptxFilename } = await import('../utils/exportPptx')
       const pptx = await buildNativePptx([slide])
       await pptx.writeFile({ fileName: `${buildPptxFilename(slide)}.pptx` })
     } finally { setExporting(false) }
@@ -381,9 +395,13 @@ export default function Preview() {
       setSlide(s => ({ ...s, share_token: token }))
     }
     const url = `${window.location.origin}/share/${token}`
-    await navigator.clipboard.writeText(url)
-    setShareToast(true)
-    setTimeout(() => setShareToast(false), 2500)
+    try {
+      await navigator.clipboard.writeText(url)
+      setShareToast(true)
+      setTimeout(() => setShareToast(false), 2500)
+    } catch {
+      window.prompt('Copier le lien :', url)
+    }
   }
 
   const annotationSections = useMemo(() => {
@@ -468,7 +486,26 @@ export default function Preview() {
     }
   }
 
-  if (loading) return <p style={{ padding: 32, color: '#6E7385' }}>Chargement…</p>
+  if (loading) return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif', background: '#fff' }}>
+      <div style={{ height: 56, borderBottom: '1px solid #E8E6E1', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12 }}>
+        <div className="sk" style={{ width: 90, height: 26, borderRadius: 7 }} />
+        <div className="sk" style={{ width: 1, height: 22 }} />
+        <div className="sk" style={{ width: 160, height: 18, borderRadius: 6 }} />
+        <div style={{ flex: 1 }} />
+        <div className="sk" style={{ width: 96, height: 32, borderRadius: 8 }} />
+        <div className="sk" style={{ width: 80, height: 32, borderRadius: 8 }} />
+      </div>
+      <div style={{ flex: 1, display: 'flex' }}>
+        <div style={{ width: 80, borderRight: '1px solid #E8E6E1', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 0', gap: 8 }}>
+          {[0,1,2].map(i => <div key={i} className="sk" style={{ width: 52, height: 52, borderRadius: 10 }} />)}
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F4F0' }}>
+          <div className="sk" style={{ width: '85%', maxWidth: 900, aspectRatio: '16/9', borderRadius: 10 }} />
+        </div>
+      </div>
+    </div>
+  )
   if (!slide)  return <p style={{ padding: 32, color: '#dc2626' }}>Slide introuvable.</p>
 
   const slideTitle = slide.card_titre || slide.titre || 'Sans titre'

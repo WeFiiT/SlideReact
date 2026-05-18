@@ -215,7 +215,35 @@ export default function Editeur() {
     setConfirmValidate(false)
   }
 
-  if (loading) return <p style={{ padding: 32, color: '#6E7385' }}>Chargement…</p>
+  if (loading) return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif', background: '#fff' }}>
+      <div style={{ height: 56, borderBottom: '1px solid #E8E6E1', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 12 }}>
+        <div className="sk" style={{ width: 90, height: 26, borderRadius: 7 }} />
+      </div>
+      <div style={{ flex: 1, display: 'flex' }}>
+        <div style={{ width: 80, borderRight: '1px solid #E8E6E1' }} />
+        <div style={{ flex: 1, background: '#F5F4F0', padding: '36px 24px' }}>
+          <div style={{ maxWidth: 820, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="sk" style={{ height: 28, width: 200, borderRadius: 8 }} />
+            {[120, 80, 100, 80].map((h, i) => (
+              <div key={i} style={{ background: '#fff', borderRadius: 10, border: '1px solid #E8E6E1', overflow: 'hidden' }}>
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 10 }}>
+                  <div className="sk" style={{ width: 24, height: 24, borderRadius: 4 }} />
+                  <div style={{ flex: 1 }}>
+                    <div className="sk" style={{ height: 14, width: '30%', marginBottom: 6 }} />
+                    <div className="sk" style={{ height: 11, width: '50%' }} />
+                  </div>
+                </div>
+                <div style={{ padding: '16px 20px' }}>
+                  <div className="sk" style={{ height: h, borderRadius: 8 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 
   const slideTitle = form.card_titre || form.titre || (isEditing ? 'Modifier la slide' : 'Nouvelle slide')
 

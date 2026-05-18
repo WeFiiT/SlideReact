@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createRoot } from 'react-dom/client'
-import JSZip from 'jszip'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
-import { buildNativePptx } from '../utils/exportPptx'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
@@ -84,6 +80,7 @@ export default function Bibliotheque() {
   }
 
   const renderSlideCanvas = async (slide) => {
+    const { default: html2canvas } = await import('html2canvas')
     const container = document.createElement('div')
     Object.assign(container.style, {
       position: 'fixed', top: '0', left: '-9999px',
@@ -115,6 +112,7 @@ export default function Bibliotheque() {
     await document.fonts.ready
 
     if (format === 'pdf') {
+      const { jsPDF } = await import('jspdf')
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 167.0625] })
       for (let i = 0; i < targets.length; i++) {
         setBatchProgress({ current: i + 1, total: targets.length })
@@ -125,9 +123,11 @@ export default function Bibliotheque() {
       pdf.save(`export-slides-${targets.length}.pdf`)
     } else if (format === 'pptx') {
       setBatchProgress({ current: 0, total: targets.length })
+      const { buildNativePptx } = await import('../utils/exportPptx')
       const pptx = await buildNativePptx(targets)
       await pptx.writeFile({ fileName: `export-slides-${targets.length}.pptx` })
     } else {
+      const { default: JSZip } = await import('jszip')
       const zip = new JSZip()
       for (let i = 0; i < targets.length; i++) {
         setBatchProgress({ current: i + 1, total: targets.length })
@@ -608,7 +608,13 @@ export default function Bibliotheque() {
       <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
       {loading ? (
-        <p style={{ color: '#64748b' }}>Chargement…</p>
+        <>
+          <SectionHeader title="Mes missions" count={0} />
+          {[0,1,2].map(i => <SkeletonCard key={i} />)}
+          <div style={{ marginBottom: 40 }} />
+          <SectionHeader title="Autres missions" count={0} />
+          {[0,1,2,3].map(i => <SkeletonCard key={`o${i}`} />)}
+        </>
       ) : activeView === 'favoris' ? (
         /* ── Vue favoris ── */
         (() => {
@@ -1070,6 +1076,28 @@ function WefiitLogoSVG({ size = 32 }) {
       <circle cx="378.97" cy="326.6" r="23.4" fill="#E97433" />
       <path d="m303.62,275.75c0,22.9-10.94,35.51-30.8,35.51s-30.8-12.61-30.8-35.51v-125.75h-41.39v125.75c0,22.9-10.94,35.51-30.8,35.51s-30.8-12.61-30.8-35.51v-125.75h-41.39v125.75c0,46.49,25.78,74.25,68.95,74.25,24.12,0,42.98-9.58,54.74-27.74,11.66,17.91,30.97,27.74,54.73,27.74,43.18,0,68.95-27.76,68.95-74.25v-125.75h-41.39v125.75Z" fill="#fff" />
     </svg>
+  )
+}
+
+function SkeletonCard() {
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E8E6E1', padding: 12, display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+      <div className="sk" style={{ width: 140, height: 79, borderRadius: 6, flexShrink: 0 }} />
+      <div style={{ flex: 1 }}>
+        <div className="sk" style={{ height: 15, width: '55%', marginBottom: 8 }} />
+        <div className="sk" style={{ height: 12, width: '35%', marginBottom: 16 }} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div className="sk" style={{ height: 10, width: 60 }} />
+          <div className="sk" style={{ height: 10, width: 40 }} />
+          <div className="sk" style={{ height: 10, width: 80 }} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <div className="sk" style={{ width: 30, height: 30, borderRadius: 8 }} />
+        <div className="sk" style={{ width: 30, height: 30, borderRadius: 8 }} />
+        <div className="sk" style={{ width: 64, height: 30, borderRadius: 8 }} />
+      </div>
+    </div>
   )
 }
 

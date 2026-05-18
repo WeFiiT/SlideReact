@@ -4,8 +4,7 @@ import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
 import { normalizeName } from '../constants'
 import { getUser } from '../pages/Login'
-import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
-import { uploadSlideToSharePoint, deleteSlideFromSharePoint, buildSharePointFileUrl, getToken } from '../utils/sharepoint'
+import { uploadSlideToSharePoint, deleteSlideFromSharePoint, getToken } from '../utils/sharepoint'
 
 const THUMB_W  = 140
 const THUMB_H  = Math.round(THUMB_W * 9 / 16)   // 79px
@@ -109,6 +108,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     if (fmt === 'pptx') {
       setExporting(true)
       try {
+        const { buildNativePptx, buildPptxFilename } = await import('../utils/exportPptx')
         const pptx = await buildNativePptx([slide])
         await pptx.writeFile({ fileName: `${buildPptxFilename(slide)}.pptx` })
       } finally { setExporting(false) }
@@ -122,9 +122,13 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     skipSharePoint.current  = false
     supabaseUpdated.current = false
     const next = !validated
+    isRemovingRef.current   = !next
 
     if (next) {
-      // Token uniquement pour la validation (upload SharePoint)
+      // Mise à jour optimiste immédiate
+      setValidated(true)
+      onValidated?.(slide.id, true)
+
       let spToken = null
       try {
         setSpStep('connecting')
@@ -138,8 +142,6 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
       const { error } = await supabase.from('slides').update({ validated: true }).eq('id', slide.id)
       if (!error) {
         supabaseUpdated.current = true
-        setValidated(true)
-        onValidated?.(slide.id, true)
         try {
           setSpStep('uploading')
           const result = await uploadSlideToSharePoint(slide, spToken)
@@ -157,12 +159,18 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
           setShowPublished(true)
         }
       } else {
+        // Revert optimiste
+        setValidated(false)
+        onValidated?.(slide.id, false)
         alert('Erreur lors de la mise à jour.')
         setConfirmValidate(false)
       }
       if (!skipSharePoint.current) setValidating(false)
     } else {
-      // Retrait : token si une URL SharePoint existe
+      // Mise à jour optimiste immédiate
+      setValidated(false)
+      onValidated?.(slide.id, false)
+
       let spToken = null
       if (spUrl) {
         try {
@@ -176,8 +184,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
 
       const { error } = await supabase.from('slides').update({ validated: false }).eq('id', slide.id)
       if (!error) {
-        setValidated(false)
-        onValidated?.(slide.id, false)
+        supabaseUpdated.current = true
         if (spUrl) {
           try {
             setSpStep('deleting')
@@ -196,6 +203,9 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
           setTimeout(() => setUnvalidateToast(null), 3000)
         }
       } else {
+        // Revert optimiste
+        setValidated(true)
+        onValidated?.(slide.id, true)
         alert('Erreur lors de la mise à jour.')
       }
       setConfirmValidate(false)
@@ -207,6 +217,11 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     skipSharePoint.current = true
     setValidating(false)
     setConfirmValidate(false)
+    if (isRemovingRef.current) {
+      setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
+      setTimeout(() => setUnvalidateToast(null), 3000)
+      return
+    }
     if (!supabaseUpdated.current) {
       setValidated(true)
       supabase.from('slides').update({ validated: true }).eq('id', slide.id)
@@ -230,8 +245,9 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     const next = current.includes(user.email)
       ? current.filter(x => x !== user.email)
       : [...current, user.email]
-    await supabase.from('slides').update({ favorited_by: next }).eq('id', slide.id)
     onFavorited?.(slide.id, next)
+    const { error } = await supabase.from('slides').update({ favorited_by: next }).eq('id', slide.id)
+    if (error) onFavorited?.(slide.id, current)
   }
 
   const handleCardClick = () => {
@@ -561,17 +577,3 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
   )
 }
 
-function computeCompletion(s) {
-  const checks = [
-    !!s.card_titre?.trim(),
-    !!s.type_mission,
-    !!s.titre?.trim(),
-    !!s.sous_titre?.trim(),
-    s.contexte?.some(v => v?.trim()),
-    s.perimetre?.some(v => v?.trim()),
-    s.enjeux?.some(v => v?.trim()),
-    s.impact?.some(v => v?.trim()),
-    !!s.logo_url?.trim(),
-  ]
-  return { score: checks.filter(Boolean).length, total: checks.length }
-}

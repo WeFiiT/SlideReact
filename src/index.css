@@ -47,3 +47,13 @@ body {
   min-height: 100vh;
 }
 
+@keyframes sk-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .45; }
+}
+.sk {
+  background: #E8E6E1;
+  border-radius: 6px;
+  animation: sk-pulse 1.5s ease-in-out infinite;
+}
+
