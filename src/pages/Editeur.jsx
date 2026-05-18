@@ -63,8 +63,6 @@ export default function Editeur() {
     supabase.from('slides').select('*').eq('id', id).single()
       .then(({ data, error }) => {
         if (error) { console.error(error); setLoading(false); return }
-        console.log('[Editeur] Supabase data.client:', JSON.stringify(data.client))
-        console.log('[Editeur] Supabase data.logo_url:', JSON.stringify(data.logo_url))
         setForm({
           ...EMPTY, ...data,
           contexte:     data.contexte?.length  ? data.contexte  : ['', '', ''],
@@ -388,6 +386,69 @@ export default function Editeur() {
                 }}
               />
               <div style={{ marginTop: 14 }}>
+                <label style={labelStyle}>Type de mission</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                  {TYPES.map(t => {
+                    const active = form.type_mission === t
+                    return (
+                      <button key={t} type="button"
+                        onClick={() => set('type_mission', active ? '' : t)}
+                        style={{
+                          background: active ? TYPE_COLORS[t] : '#f1f5f9',
+                          color: active ? '#fff' : '#475569',
+                          border: `2px solid ${active ? TYPE_COLORS[t] : 'transparent'}`,
+                          borderRadius: 20, padding: '6px 16px',
+                          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                        {t}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <label style={labelStyle}>Discipline</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                  {DISCIPLINES.map(d => {
+                    const active = form.discipline === d
+                    return (
+                      <button key={d} type="button"
+                        onClick={() => set('discipline', active ? '' : d)}
+                        style={{
+                          background: active ? '#0E2A6B' : '#f1f5f9',
+                          color: active ? '#fff' : '#475569',
+                          border: `2px solid ${active ? '#0E2A6B' : 'transparent'}`,
+                          borderRadius: 20, padding: '6px 16px',
+                          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                        {d}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <label style={labelStyle}>Niveau</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                  {NIVEAUX.map(n => {
+                    const active = form.niveau_discipline === n
+                    return (
+                      <button key={n} type="button"
+                        onClick={() => set('niveau_discipline', active ? '' : n)}
+                        style={{
+                          background: active ? '#E97433' : '#f1f5f9',
+                          color: active ? '#fff' : '#475569',
+                          border: `2px solid ${active ? '#E97433' : 'transparent'}`,
+                          borderRadius: 20, padding: '6px 16px',
+                          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                        {n}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
                 <label style={labelStyle}>Management</label>
                 <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                   {MANAGEMENT_OPTIONS.map(v => {
@@ -463,69 +524,6 @@ export default function Editeur() {
                     style={{ background: '#0E2A6B', color: '#fff', border: 'none', borderRadius: 7, padding: '0 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', height: 34, whiteSpace: 'nowrap' }}>
                     + Ajouter
                   </button>
-                </div>
-              </div>
-              <div style={{ marginTop: 14 }}>
-                <label style={labelStyle}>Discipline</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                  {DISCIPLINES.map(d => {
-                    const active = form.discipline === d
-                    return (
-                      <button key={d} type="button"
-                        onClick={() => set('discipline', active ? '' : d)}
-                        style={{
-                          background: active ? '#0E2A6B' : '#f1f5f9',
-                          color: active ? '#fff' : '#475569',
-                          border: `2px solid ${active ? '#0E2A6B' : 'transparent'}`,
-                          borderRadius: 20, padding: '6px 16px',
-                          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                        }}>
-                        {d}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div style={{ marginTop: 14 }}>
-                <label style={labelStyle}>Niveau</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                  {NIVEAUX.map(n => {
-                    const active = form.niveau_discipline === n
-                    return (
-                      <button key={n} type="button"
-                        onClick={() => set('niveau_discipline', active ? '' : n)}
-                        style={{
-                          background: active ? '#E97433' : '#f1f5f9',
-                          color: active ? '#fff' : '#475569',
-                          border: `2px solid ${active ? '#E97433' : 'transparent'}`,
-                          borderRadius: 20, padding: '6px 16px',
-                          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                        }}>
-                        {n}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div style={{ marginTop: 14 }}>
-                <label style={labelStyle}>Type de mission</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                  {TYPES.map(t => {
-                    const active = form.type_mission === t
-                    return (
-                      <button key={t} type="button"
-                        onClick={() => set('type_mission', active ? '' : t)}
-                        style={{
-                          background: active ? TYPE_COLORS[t] : '#f1f5f9',
-                          color: active ? '#fff' : '#475569',
-                          border: `2px solid ${active ? TYPE_COLORS[t] : 'transparent'}`,
-                          borderRadius: 20, padding: '6px 16px',
-                          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                        }}>
-                        {t}
-                      </button>
-                    )
-                  })}
                 </div>
               </div>
             </Card>
