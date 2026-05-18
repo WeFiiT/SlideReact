@@ -180,14 +180,17 @@ export async function buildNativePptx(slides) {
     zip.file('[Content_Types].xml', ctXml.replace('</Types>', `${newTypes}</Types>`))
   }
 
+  const generateBlob = () => zip.generateAsync({
+    type:     'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  })
+
   return {
+    getBlob: generateBlob,
     writeFile: async ({ fileName }) => {
-      const blob = await zip.generateAsync({
-        type:     'blob',
-        mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      })
-      const url = URL.createObjectURL(blob)
-      const a   = document.createElement('a')
+      const blob = await generateBlob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
       a.href     = url
       a.download = fileName
       a.click()

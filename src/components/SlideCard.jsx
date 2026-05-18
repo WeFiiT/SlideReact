@@ -5,6 +5,7 @@ import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
 import { normalizeName } from '../constants'
 import { getUser } from '../pages/Login'
 import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
+import { uploadSlideToSharePoint } from '../utils/sharepoint'
 
 const THUMB_W  = 140
 const THUMB_H  = Math.round(THUMB_W * 9 / 16)   // 79px
@@ -111,8 +112,16 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     setValidating(true)
     const next = !validated
     const { error } = await supabase.from('slides').update({ validated: next }).eq('id', slide.id)
-    if (!error) { setValidated(next); onValidated?.(slide.id, next) }
-    else alert('Erreur lors de la mise à jour.')
+    if (!error) {
+      setValidated(next)
+      onValidated?.(slide.id, next)
+      if (next) {
+        // Fire-and-forget : upload vers SharePoint sans bloquer la validation
+        uploadSlideToSharePoint(slide).catch(e => console.error('SharePoint upload:', e))
+      }
+    } else {
+      alert('Erreur lors de la mise à jour.')
+    }
     setValidating(false)
     setConfirmValidate(false)
   }
