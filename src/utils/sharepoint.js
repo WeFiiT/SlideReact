@@ -38,7 +38,7 @@ export async function getToken() {
     }
   }
 
-  const result = await msal.acquireTokenPopup({ scopes: SCOPES })
+  const result = await msal.acquireTokenPopup({ scopes: SCOPES, redirectUri: window.location.origin + '/blank.html' })
   return result.accessToken
 }
 
