@@ -66,7 +66,15 @@ function removeEmptyMetrics(xml, data) {
   return xml
 }
 
-// 2. Text replacement with XML escaping + title truncation
+// 2a. Remove cap="all" from title run so text appears as typed, not uppercased
+function removeTitleCaps(xml) {
+  return xml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, shape => {
+    if (!shape.includes('<a:t>Titre de la slide</a:t>')) return shape
+    return shape.replace(/\s*cap="[^"]*"/g, '')
+  })
+}
+
+// 2b. Text replacement with XML escaping + title truncation
 function applyData(slideXml, data) {
   let xml = slideXml
   for (const [placeholder, getValue] of MAPPING) {
@@ -218,9 +226,10 @@ export async function buildNativePptx(slides) {
     const n    = i + 1
     const data = slides[i]
 
-    // Pipeline: remove empty metrics → adapt tags → replace text
+    // Pipeline: remove empty metrics → adapt tags → remove title caps → replace text
     let xml = removeEmptyMetrics(slide1Xml, data)
     xml     = processTagShapes(xml, data.tags)
+    xml     = removeTitleCaps(xml)
     xml     = applyData(xml, data)
 
     if (data.logo_url) {
