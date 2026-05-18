@@ -81,9 +81,10 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
   const [spStep,          setSpStep]          = useState(null) // null | 'connecting' | 'uploading' | 'deleting'
   const exportMenuRef = useRef(null)
 
-  const isOwner = user &&
-    normalizeName(slide.prenom) === user.prenomNorm &&
-    normalizeName(slide.nom)    === user.nomNorm
+  const isOwner = user && (
+    slide.owner_email === user.email ||
+    (!slide.owner_email && normalizeName(slide.prenom) === user.prenomNorm && normalizeName(slide.nom) === user.nomNorm)
+  )
 
   // Sync local validated state if the parent updates the slide prop
   useEffect(() => { setValidated(!!slide.validated) }, [slide.validated])

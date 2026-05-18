@@ -242,18 +242,17 @@ export default function Bibliotheque() {
     })
   }
 
+  const isMySlide = (s) => user && (
+    s.owner_email === user.email ||
+    (!s.owner_email && normalizeName(s.prenom) === user.prenomNorm && normalizeName(s.nom) === user.nomNorm)
+  )
+
   const myFilteredSlides = useMemo(() =>
-    user ? sortFavsFirst(filteredSlides.filter(s =>
-      normalizeName(s.prenom) === user.prenomNorm &&
-      normalizeName(s.nom)    === user.nomNorm
-    )) : []
+    user ? sortFavsFirst(filteredSlides.filter(isMySlide)) : []
   , [filteredSlides, user])
 
   const othersFilteredSlides = useMemo(() =>
-    user ? sortFavsFirst(filteredSlides.filter(s =>
-      !(normalizeName(s.prenom) === user.prenomNorm &&
-        normalizeName(s.nom)    === user.nomNorm)
-    )) : filteredSlides
+    user ? sortFavsFirst(filteredSlides.filter(s => !isMySlide(s))) : filteredSlides
   , [filteredSlides, user])
 
   const groupedSlides = useMemo(() => {
@@ -344,6 +343,7 @@ export default function Bibliotheque() {
         management:        draft.management || null,
         sujets_mission:    draft.sujets_mission.length ? draft.sujets_mission : null,
         outils:            draft.outils.length ? draft.outils : null,
+        owner_email:       user?.email || null,
       })
       .select()
       .single()

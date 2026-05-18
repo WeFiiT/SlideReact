@@ -451,9 +451,10 @@ export default function Preview() {
   const slideTitle = slide.card_titre || slide.titre || 'Sans titre'
   const savedLabel = lastSaved ? relativeTime(lastSaved) : null
   const user       = getUser()
-  const isOwner    = user &&
-    normalizeName(slide.prenom) === user.prenomNorm &&
-    normalizeName(slide.nom)    === user.nomNorm
+  const isOwner    = user && (
+    slide.owner_email === user.email ||
+    (!slide.owner_email && normalizeName(slide.prenom) === user.prenomNorm && normalizeName(slide.nom) === user.nomNorm)
+  )
 
   if (fullscreen) {
     const fsScale = Math.min(window.innerWidth / 1280, window.innerHeight / 720)
