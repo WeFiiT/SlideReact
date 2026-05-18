@@ -143,7 +143,10 @@ Deno.serve(async (req) => {
     segmentation:       segmentation,
     discipline:         page.properties?.['Discipline']?.select?.name ?? null,
     niveau_discipline:  page.properties?.['Niveau Discipline (We.Horizon)']?.select?.name ?? null,
+    management:         page.properties?.['Management']?.select?.name ?? null,
     type_produit:       (page.properties?.['Type produit']?.multi_select ?? []).map((v: any) => v.name).filter(Boolean),
+    sujets_mission:     (page.properties?.['Sujets mission']?.multi_select ?? []).map((v: any) => v.name).filter(Boolean),
+    outils:             (page.properties?.['Outils']?.multi_select ?? []).map((v: any) => v.name).filter(Boolean),
     metrique_1_chiffre: getProp(page, 'Métrique 1 - Chiffre') || null,
     metrique_1_label:   getProp(page, 'Métrique 1 - Label') || null,
     metrique_2_chiffre: getProp(page, 'Métrique 2 - Chiffre') || null,
@@ -154,7 +157,7 @@ Deno.serve(async (req) => {
 
   // Chercher si un slide existe déjà avec ce notion_page_id
   const checkRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/slides?notion_page_id=eq.${pageId}&select=id,client,logo_url,segmentation,discipline,niveau_discipline`,
+    `${SUPABASE_URL}/rest/v1/slides?notion_page_id=eq.${pageId}&select=id,client,logo_url,segmentation,discipline,niveau_discipline,management,sujets_mission,outils,type_produit`,
     { headers: sbHeaders },
   )
   const existing: Array<{
@@ -164,6 +167,10 @@ Deno.serve(async (req) => {
     segmentation: string | null
     discipline: string | null
     niveau_discipline: string | null
+    management: string | null
+    sujets_mission: string[] | null
+    outils: string[] | null
+    type_produit: string[] | null
   }> = await checkRes.json()
 
   let slideId: string
@@ -171,9 +178,15 @@ Deno.serve(async (req) => {
     slideId = existing[0].id
     const patch: Record<string, any> = { ...slide }
 
-    // Ne pas écraser les champs renseignés dans l'app si Notion renvoie null
-    for (const field of ['client', 'logo_url', 'segmentation', 'discipline', 'niveau_discipline'] as const) {
+    // Ne pas écraser les champs scalaires renseignés dans l'app si Notion renvoie null
+    for (const field of ['client', 'logo_url', 'segmentation', 'discipline', 'niveau_discipline', 'management'] as const) {
       if (patch[field] === null && existing[0][field] !== null) {
+        delete patch[field]
+      }
+    }
+    // Ne pas écraser les tableaux renseignés dans l'app si Notion renvoie un tableau vide
+    for (const field of ['sujets_mission', 'outils', 'type_produit'] as const) {
+      if ((!patch[field] || patch[field].length === 0) && existing[0][field]?.length) {
         delete patch[field]
       }
     }
