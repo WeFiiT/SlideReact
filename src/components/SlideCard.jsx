@@ -71,6 +71,8 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
   const [confirmValidate, setConfirmValidate] = useState(false)
   const [validating,      setValidating]      = useState(false)
   const [validated,       setValidated]       = useState(!!slide.validated)
+  const [publishedUrl,    setPublishedUrl]    = useState(null)
+  const [showPublished,   setShowPublished]   = useState(false)
   const exportMenuRef = useRef(null)
 
   const isOwner = user &&
@@ -116,14 +118,23 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
       setValidated(next)
       onValidated?.(slide.id, next)
       if (next) {
-        // Fire-and-forget : upload vers SharePoint sans bloquer la validation
-        uploadSlideToSharePoint(slide).catch(e => console.error('SharePoint upload:', e))
+        try {
+          const result = await uploadSlideToSharePoint(slide)
+          setPublishedUrl(result?.webUrl || null)
+        } catch (e) {
+          console.error('SharePoint upload:', e)
+          setPublishedUrl(null)
+        }
+        setConfirmValidate(false)
+        setShowPublished(true)
+      } else {
+        setConfirmValidate(false)
       }
     } else {
       alert('Erreur lors de la mise à jour.')
+      setConfirmValidate(false)
     }
     setValidating(false)
-    setConfirmValidate(false)
   }
 
   const handleDelete = async () => {
@@ -356,17 +367,50 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
               {validated
                 ? <>La slide <strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
-                : <>La slide <strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et disponible pour un envoi potentiel à des clients.</>
+                : <><strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et <strong>publiée automatiquement sur SharePoint</strong> dans le dossier des références WeFiiT.</>
               }
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={handleValidate} disabled={validating}
                 style={{ flex: 1, background: validated ? '#92521A' : '#16a34a', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: validating ? 'default' : 'pointer', opacity: validating ? 0.7 : 1, fontFamily: 'inherit' }}>
-                {validating ? '…' : validated ? 'Retirer la validation' : 'Confirmer la validation'}
+                {validating ? 'Publication en cours…' : validated ? 'Retirer la validation' : 'Confirmer et publier'}
               </button>
               <button onClick={() => setConfirmValidate(false)} disabled={validating}
                 style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale publication SharePoint ── */}
+      {showPublished && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPublished(false) }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 17, color: '#0E2A6B', marginBottom: 8 }}>Mission publiée !</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
+              <strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> est maintenant marquée <strong style={{ color: '#16a34a' }}>Ready</strong> et disponible sur SharePoint.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {publishedUrl && (
+                <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#0E2A6B', color: '#fff', borderRadius: 8, padding: '11px 0', fontWeight: 700, fontSize: 14, textDecoration: 'none', fontFamily: 'inherit' }}>
+                  Voir sur SharePoint
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3M9 2h5v5M14 2l-7 7"/>
+                  </svg>
+                </a>
+              )}
+              <button onClick={() => setShowPublished(false)}
+                style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '11px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Fermer
               </button>
             </div>
           </div>

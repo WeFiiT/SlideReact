@@ -66,5 +66,6 @@ export async function uploadSlideToSharePoint(slide) {
     throw new Error(`Upload SharePoint échoué (${res.status}): ${detail}`)
   }
 
-  return filename
+  const json = await res.json()
+  return { filename, webUrl: json.webUrl || null }
 }
