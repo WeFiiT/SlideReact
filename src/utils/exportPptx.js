@@ -33,13 +33,22 @@ const LOGO = { x: 8572362, y: 750000, cx: 2847796, cy: 1083659 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+function escapeXml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+}
+
 function applyData(slideXml, data) {
   let xml = slideXml
   for (const [placeholder, getValue] of MAPPING) {
     const escaped = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     xml = xml.replace(
       new RegExp(`(<a:t>)${escaped}(</a:t>)`),
-      (_, open, close) => `${open}${getValue(data)}${close}`,
+      (_, open, close) => `${open}${escapeXml(getValue(data))}${close}`,
     )
   }
   return xml
