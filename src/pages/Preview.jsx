@@ -46,6 +46,7 @@ export default function Preview() {
   const autoExportDone  = useRef(false)
   const slideRef        = useRef(null)
   const saveTimer       = useRef(null)
+  const pendingSave     = useRef(null)
 
   const [slide, setSlide]               = useState(null)
   const [loading, setLoading]           = useState(true)
@@ -218,8 +219,30 @@ export default function Preview() {
     return () => clearInterval(id)
   }, [])
 
-  // Cleanup pending debounced save on unmount
-  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current) }, [])
+  // Flush pending debounced save on unmount
+  useEffect(() => () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      const data = pendingSave.current
+      if (data) {
+        supabase.from('slides').update({
+          titre:              data.titre,
+          sous_titre:         data.sous_titre,
+          contexte:           data.contexte,
+          tags:               data.tags,
+          perimetre:          data.perimetre,
+          enjeux:             data.enjeux,
+          impact:             data.impact,
+          metrique_1_chiffre: data.metrique_1_chiffre,
+          metrique_1_label:   data.metrique_1_label,
+          metrique_2_chiffre: data.metrique_2_chiffre,
+          metrique_2_label:   data.metrique_2_label,
+          metrique_3_chiffre: data.metrique_3_chiffre,
+          metrique_3_label:   data.metrique_3_label,
+        }).eq('id', id)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     supabase.from('comments').select('*').eq('slide_id', id).order('created_at', { ascending: true })
@@ -242,8 +265,10 @@ export default function Preview() {
 
   const schedSave = (updated) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
+    pendingSave.current = updated
     setSaving(true)
     saveTimer.current = setTimeout(async () => {
+      pendingSave.current = null
       const { error } = await supabase.from('slides').update({
         titre:              updated.titre,
         sous_titre:         updated.sous_titre,
@@ -535,10 +560,10 @@ export default function Preview() {
           </svg>
         </button>
 
-        <div style={styles.divider} />
+        {!textEditMode && <div style={styles.divider} />}
 
         {/* ── Groupe publication ── */}
-        <div ref={shareMenuRef} style={{ position: 'relative' }}>
+        {!textEditMode && <div ref={shareMenuRef} style={{ position: 'relative' }}>
           <button onClick={() => setShareMenu(v => !v)} style={{ ...styles.btnSecondary, gap: 6 }}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="4" r="1.8"/><circle cx="4" cy="8" r="1.8"/><circle cx="12" cy="12" r="1.8"/>
@@ -579,9 +604,9 @@ export default function Preview() {
               ✓ Lien copié !
             </div>
           )}
-        </div>
+        </div>}
 
-        {isOwner && (
+        {!textEditMode && isOwner && (
           <button
             onClick={() => setConfirmValidate(true)}
             style={{ height: 34, padding: '0 12px', borderRadius: 8, background: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', color: validated ? '#92521A' : '#16a34a', border: validated ? '1px solid #fde9c5' : '1px solid #bbf7d0' }}
@@ -590,7 +615,7 @@ export default function Preview() {
           </button>
         )}
 
-        <div ref={exportMenuRef} style={{ position: 'relative' }}>
+        {!textEditMode && <div ref={exportMenuRef} style={{ position: 'relative' }}>
           <button
             onClick={() => !exporting && setExportMenu(v => !v)}
             disabled={exporting}
@@ -646,7 +671,7 @@ export default function Preview() {
               ))}
             </div>
           )}
-        </div>
+        </div>}
       </header>
 
       {/* ── Body ── */}

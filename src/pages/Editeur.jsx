@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, normalizeName } from '../constants'
+import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, MANAGEMENT_OPTIONS, SUJETS_MISSION, OUTILS, normalizeName } from '../constants'
 import ClientSelector from '../components/ClientSelector'
 import { getUser } from './Login'
 
@@ -28,6 +28,9 @@ const EMPTY = {
   segmentation: '',
   discipline: '',
   niveau_discipline: '',
+  management: '',
+  sujets_mission: [],
+  outils: [],
 }
 
 export default function Editeur() {
@@ -48,6 +51,9 @@ export default function Editeur() {
   const [autoSaving, setAutoSaving]   = useState(false)
   const [lastAutoSaved, setLastAutoSaved] = useState(null)
   const [errors, setErrors]           = useState({})
+  const [newSujet, setNewSujet]       = useState('')
+  const [newOutil, setNewOutil]       = useState('')
+  const [slideOpen, setSlideOpen]     = useState(false)
   const autoSaveTimer                 = useRef(null)
 
   useEffect(() => () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current) }, [])
@@ -72,6 +78,9 @@ export default function Editeur() {
           segmentation:      data.segmentation      || '',
           discipline:        data.discipline        || '',
           niveau_discipline: data.niveau_discipline || '',
+          management:        data.management        || '',
+          sujets_mission:    Array.isArray(data.sujets_mission) ? data.sujets_mission : [],
+          outils:            Array.isArray(data.outils)         ? data.outils         : [],
         })
         setLoading(false)
       })
@@ -92,6 +101,9 @@ export default function Editeur() {
     segmentation:      f.segmentation || null,
     discipline:        f.discipline || null,
     niveau_discipline: f.niveau_discipline || null,
+    management:        f.management || null,
+    sujets_mission:    f.sujets_mission.length ? f.sujets_mission : null,
+    outils:            f.outils.length ? f.outils : null,
   })
 
   const schedAutoSave = (updated) => {
@@ -354,14 +366,92 @@ export default function Editeur() {
               <ClientSelector
                 client={form.client}
                 segmentation={form.segmentation}
-                onChange={({ client, segmentation }) => {
+                onChange={({ client, segmentation, logo_url }) => {
                   setForm(f => {
-                    const updated = { ...f, client, segmentation }
+                    const updated = { ...f, client, segmentation, logo_url: logo_url || f.logo_url || '' }
                     schedAutoSave(updated)
                     return updated
                   })
                 }}
               />
+              <div style={{ marginTop: 14 }}>
+                <label style={labelStyle}>Management</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  {MANAGEMENT_OPTIONS.map(v => {
+                    const active = form.management === v
+                    return (
+                      <button key={v} type="button" onClick={() => set('management', active ? '' : v)}
+                        style={{ background: active ? '#0E2A6B' : '#f1f5f9', color: active ? '#fff' : '#475569', border: `2px solid ${active ? '#0E2A6B' : 'transparent'}`, borderRadius: 20, padding: '6px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {v}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <label style={labelStyle}>Sujets de mission</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {SUJETS_MISSION.map(s => {
+                    const active = form.sujets_mission.includes(s)
+                    return (
+                      <button key={s} type="button"
+                        onClick={() => set('sujets_mission', active ? form.sujets_mission.filter(x => x !== s) : [...form.sujets_mission, s])}
+                        style={{ background: active ? '#0E2A6B' : '#f1f5f9', color: active ? '#fff' : '#475569', border: `2px solid ${active ? '#0E2A6B' : 'transparent'}`, borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {s}
+                      </button>
+                    )
+                  })}
+                  {form.sujets_mission.filter(s => !SUJETS_MISSION.includes(s)).map(s => (
+                    <button key={s} type="button"
+                      onClick={() => set('sujets_mission', form.sujets_mission.filter(x => x !== s))}
+                      style={{ background: '#E97433', color: '#fff', border: '2px solid #E97433', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {s} ✕
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input value={newSujet} onChange={e => setNewSujet(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && newSujet.trim()) { set('sujets_mission', [...form.sujets_mission, newSujet.trim()]); setNewSujet('') }}}
+                    placeholder="Ajouter un sujet personnalisé…"
+                    style={{ ...inputBase, flex: 1, height: 34, fontSize: 13 }} />
+                  <button type="button" onClick={() => { if (newSujet.trim()) { set('sujets_mission', [...form.sujets_mission, newSujet.trim()]); setNewSujet('') }}}
+                    style={{ background: '#0E2A6B', color: '#fff', border: 'none', borderRadius: 7, padding: '0 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', height: 34, whiteSpace: 'nowrap' }}>
+                    + Ajouter
+                  </button>
+                </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <label style={labelStyle}>Outils</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {OUTILS.map(o => {
+                    const active = form.outils.includes(o)
+                    return (
+                      <button key={o} type="button"
+                        onClick={() => set('outils', active ? form.outils.filter(x => x !== o) : [...form.outils, o])}
+                        style={{ background: active ? '#0E2A6B' : '#f1f5f9', color: active ? '#fff' : '#475569', border: `2px solid ${active ? '#0E2A6B' : 'transparent'}`, borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {o}
+                      </button>
+                    )
+                  })}
+                  {form.outils.filter(o => !OUTILS.includes(o)).map(o => (
+                    <button key={o} type="button"
+                      onClick={() => set('outils', form.outils.filter(x => x !== o))}
+                      style={{ background: '#E97433', color: '#fff', border: '2px solid #E97433', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {o} ✕
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input value={newOutil} onChange={e => setNewOutil(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && newOutil.trim()) { set('outils', [...form.outils, newOutil.trim()]); setNewOutil('') }}}
+                    placeholder="Ajouter un outil personnalisé…"
+                    style={{ ...inputBase, flex: 1, height: 34, fontSize: 13 }} />
+                  <button type="button" onClick={() => { if (newOutil.trim()) { set('outils', [...form.outils, newOutil.trim()]); setNewOutil('') }}}
+                    style={{ background: '#0E2A6B', color: '#fff', border: 'none', borderRadius: 7, padding: '0 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', height: 34, whiteSpace: 'nowrap' }}>
+                    + Ajouter
+                  </button>
+                </div>
+              </div>
               <div style={{ marginTop: 14 }}>
                 <label style={labelStyle}>Discipline</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
@@ -427,6 +517,23 @@ export default function Editeur() {
               </div>
             </Card>
 
+            {/* ── Accordéon contenu slide ── */}
+            <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #E8E6E1', marginBottom: 20, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+              <button type="button" onClick={() => setSlideOpen(v => !v)}
+                style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, borderLeft: '4px solid #6E7385', background: '#fafafa', borderBottom: slideOpen ? '1px solid #f1f5f9' : 'none', fontFamily: 'inherit' }}>
+                <span style={{ fontSize: 16 }}>📝</span>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1E2C' }}>Contenu de la slide</div>
+                  <div style={{ fontSize: 12, color: '#6E7385', marginTop: 1 }}>En-tête, contexte, tags, périmètre, enjeux, impact, métriques</div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transform: slideOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }}>
+                  <path d="M4 6l4 4 4-4"/>
+                </svg>
+              </button>
+              {slideOpen && (
+                <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+
             {/* ── En-tête ── */}
             <Card icon="◼" color="#0E2A6B" title="En-tête" desc="Bandeau bleu supérieur de la slide">
               <Field label="Titre de la slide" value={form.titre} onChange={(v) => set('titre', v)} placeholder="Ex : Transformation digitale RH"
@@ -488,6 +595,10 @@ export default function Editeur() {
                 ))}
               </div>
             </Card>
+
+                </div>
+              )}
+            </div>
 
             {/* ── Logo client ── */}
             <Card icon="🖼️" color="#94a3b8" title="Logo client" desc="Zone en haut à droite de la slide">

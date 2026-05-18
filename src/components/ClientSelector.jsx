@@ -43,8 +43,9 @@ export default function ClientSelector({ client, segmentation, onChange }) {
   }, [])
 
   const handleSelect = (name) => {
+    if (!name) return
     const found = clients.find(c => c.name === name)
-    onChange({ client: name, segmentation: found?.segmentation || '' })
+    onChange({ client: name, segmentation: found?.segmentation || '', logo_url: found?.logo_url || '' })
   }
 
   const handleAdd = async () => {

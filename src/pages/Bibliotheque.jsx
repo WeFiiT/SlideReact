@@ -39,7 +39,7 @@ export default function Bibliotheque() {
   const [creating, setCreating]       = useState(false)
   const [newSujet, setNewSujet]       = useState('')
   const [newOutil, setNewOutil]       = useState('')
-  const emptyDraft = () => ({ prenom: user?.prenom || '', nom: user?.nom || '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
+  const emptyDraft = () => ({ prenom: user?.prenom || '', nom: user?.nom || '', titre: '', type_mission: '', client: '', segmentation: '', logo_url: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
   const [draft, setDraft]         = useState(emptyDraft)
 
   /* Filtres */
@@ -322,7 +322,7 @@ export default function Bibliotheque() {
     return sorted.map(k => ({ label: k, count: byKey[k].length, slides: favsFirst(byKey[k]) }))
   }, [activeView, filteredSlides, user])
 
-  const canCreate  = draft.prenom.trim() && draft.nom.trim() && draft.titre.trim() && draft.client.trim() && draft.segmentation.trim() && draft.type_mission
+  const canCreate  = draft.prenom.trim() && draft.nom.trim() && draft.titre.trim() && draft.client.trim() && draft.type_mission
   const canCreate2 = draft.discipline && draft.niveau_discipline && draft.management && draft.sujets_mission.length > 0 && draft.outils.length > 0
 
   const handleCreate = async () => {
@@ -343,6 +343,7 @@ export default function Bibliotheque() {
         management:        draft.management || null,
         sujets_mission:    draft.sujets_mission.length ? draft.sujets_mission : null,
         outils:            draft.outils.length ? draft.outils : null,
+        logo_url:          draft.logo_url || null,
         owner_email:       user?.email || null,
       })
       .select()
@@ -871,7 +872,7 @@ export default function Bibliotheque() {
                 <ClientSelector
                   client={draft.client}
                   segmentation={draft.segmentation}
-                  onChange={({ client, segmentation }) => setDraft(p => ({ ...p, client, segmentation }))}
+                  onChange={({ client, segmentation, logo_url }) => setDraft(p => ({ ...p, client, segmentation, logo_url: logo_url || '' }))}
                 />
 
                 {/* Type de mission */}
