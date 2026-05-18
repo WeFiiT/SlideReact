@@ -29,7 +29,7 @@ export const DEFAULT_LAYOUT = {
   enjeux:    { x: PAD_X,   y: 488,  w: LEFT_W, h: 180 },
   logo:      { x: RIGHT_X, y: 101,  w: RIGHT_W, h: 135 },
   impact:    { x: RIGHT_X, y: 236,  w: RIGHT_W, h: 180},
-  metriques: { x: RIGHT_X, y: 514,  w: RIGHT_W, h: 131},
+  metriques: { x: RIGHT_X, y: 503,  w: RIGHT_W, h: 128},
 }
 
 const BLOCK_LABELS = {
