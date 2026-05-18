@@ -29,7 +29,7 @@ export const DEFAULT_LAYOUT = {
   enjeux:    { x: PAD_X,   y: 488,  w: LEFT_W, h: 180 },
   logo:      { x: RIGHT_X, y: 101,  w: RIGHT_W, h: 135 },
   impact:    { x: RIGHT_X, y: 236,  w: RIGHT_W, h: 180},
-  metriques: { x: RIGHT_X, y: 476,  w: RIGHT_W, h: 131},
+  metriques: { x: RIGHT_X, y: 514,  w: RIGHT_W, h: 131},
 }
 
 const BLOCK_LABELS = {
@@ -342,13 +342,13 @@ export default function SlideTemplate({
 
       {/* Métriques — carte visible si chiffre rempli, ou toujours en édition */}
       <Block blockKey="metriques" {...bp}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           {metriques.map((m, i) => {
             if (!textEditMode && !m.chiffre && !m.label) return null
             const cf = `metrique_${i + 1}_chiffre`
             const lf = `metrique_${i + 1}_label`
             return (
-              <div key={i} style={{ background: C.cream2, borderRadius: 5, padding: '7px 14px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <div key={i} style={{ background: C.cream2, borderRadius: 5, padding: '7px 14px', height: 40, flexShrink: 0, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <EditText value={m.chiffre} placeholder={m.phChiffre} onSave={chg(cf)}
                   style={{ color: C.orange, fontWeight: 700, fontSize: 26, fontStyle: 'italic', fontFamily: FONT_TITLE, wordSpacing: 'normal', letterSpacing: 'normal' }} />
                 <EditText value={m.label} placeholder={m.phLabel} onSave={chg(lf)}
