@@ -327,6 +327,7 @@ export default function Bibliotheque() {
 
   const handleCreate = async () => {
     if (!canCreate) return
+    console.log('[handleCreate] draft.client:', JSON.stringify(draft.client), '| draft.logo_url:', JSON.stringify(draft.logo_url))
     setCreating(true)
     const { data, error } = await supabase
       .from('slides')
