@@ -449,6 +449,32 @@ export default function Preview() {
 
         <div style={{ flex: 1 }} />
 
+        {/* ── Groupe vue ── */}
+        {railMode !== 'comments' && (!textEditMode ? (
+          <button onClick={() => setTextEditMode(true)} style={{ ...styles.btnSecondary, gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 5V3.5h8V5M8 3.5v9M6 12.5h4"/>
+            </svg>
+            Éditer le texte
+          </button>
+        ) : (
+          <button onClick={() => setTextEditMode(false)} style={{ ...styles.btnSecondary, gap: 6, color: '#3EAE6E', borderColor: '#3EAE6E' }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#3EAE6E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 8l4 4 6-6"/>
+            </svg>
+            Terminer
+          </button>
+        ))}
+
+        <button onClick={() => setFullscreen(true)} title="Plein écran (F)" style={{ ...styles.btnSecondary, padding: '0 10px' }}>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 5V2h3M11 2h3v3M14 11v3h-3M5 14H2v-3"/>
+          </svg>
+        </button>
+
+        <div style={styles.divider} />
+
+        {/* ── Groupe publication ── */}
         <div ref={shareMenuRef} style={{ position: 'relative' }}>
           <button onClick={() => setShareMenu(v => !v)} style={{ ...styles.btnSecondary, gap: 6 }}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -471,8 +497,8 @@ export default function Preview() {
                 </svg>
                 Copier le lien aperçu
               </button>
-              {validated && (
-                <a href={slide.sharepoint_url || buildSharePointFileUrl(slide)} target="_blank" rel="noopener noreferrer"
+              {validated && slide.sharepoint_url && (
+                <a href={slide.sharepoint_url} target="_blank" rel="noopener noreferrer"
                   style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#1A1E2C', fontWeight: 500, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', boxSizing: 'border-box' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#F3F1EC'}
                   onMouseLeave={e => e.currentTarget.style.background = 'none'}
@@ -492,41 +518,12 @@ export default function Preview() {
           )}
         </div>
 
-        {railMode !== 'comments' && (!textEditMode ? (
-          <button onClick={() => setTextEditMode(true)} style={styles.btnSecondary}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 5V3.5h8V5M8 3.5v9M6 12.5h4"/>
-            </svg>
-            Éditer le texte
-          </button>
-        ) : (
-          <button onClick={() => setTextEditMode(false)} style={{ ...styles.btnSecondary, color: '#3EAE6E', borderColor: '#3EAE6E' }}>
-            ✓ Terminer
-          </button>
-        ))}
-
-        <button
-          onClick={() => setFullscreen(true)}
-          title="Plein écran (F)"
-          style={{ ...styles.btnSecondary, padding: '0 10px' }}
-        >
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 5V2h3M11 2h3v3M14 11v3h-3M5 14H2v-3"/>
-          </svg>
-        </button>
-
         {isOwner && (
           <button
             onClick={() => setConfirmValidate(true)}
-            style={{
-              height: 34, padding: '0 14px', borderRadius: 8, border: 'none',
-              background: validated ? '#fef3c7' : '#dcfce7',
-              color: validated ? '#92521A' : '#16a34a',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-            }}
+            style={{ height: 34, padding: '0 12px', borderRadius: 8, background: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', color: validated ? '#92521A' : '#16a34a', border: validated ? '1px solid #fde9c5' : '1px solid #bbf7d0' }}
           >
-            {validated ? '● Ready' : '✓ Valider'}
+            {validated ? 'Retirer la validation' : '✓ Valider'}
           </button>
         )}
 
@@ -758,9 +755,14 @@ export default function Preview() {
                 <path d="M20 6L9 17l-5-5"/>
               </svg>
             </div>
-            <div style={{ fontWeight: 700, fontSize: 17, color: '#0E2A6B', marginBottom: 8 }}>Mission publiée !</div>
+            <div style={{ fontWeight: 700, fontSize: 17, color: '#0E2A6B', marginBottom: 8 }}>
+              {publishedUrl ? 'Mission publiée !' : 'Mission validée !'}
+            </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
-              <strong>« {slideTitle} »</strong> est maintenant marquée <strong style={{ color: '#16a34a' }}>Ready</strong> et disponible sur SharePoint.
+              <strong>« {slideTitle} »</strong> est maintenant marquée <strong style={{ color: '#16a34a' }}>Ready</strong>.{' '}
+              {publishedUrl
+                ? 'Le fichier est disponible sur SharePoint.'
+                : "Elle n'a pas encore été publiée sur SharePoint. Vous pourrez le faire en revalidant la slide."}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {publishedUrl && (

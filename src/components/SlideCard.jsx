@@ -339,9 +339,9 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
                   </button>
                   {showMenu && (
                     <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, background: '#fff', borderRadius: 10, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)', border: '1px solid #f1f5f9', minWidth: 200, zIndex: 100 }}>
-                      {validated && (
+                      {validated && slide.sharepoint_url && (
                         <a
-                          href={slide.sharepoint_url || buildSharePointFileUrl(slide)}
+                          href={slide.sharepoint_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => { e.stopPropagation(); setShowMenu(false) }}
@@ -425,9 +425,14 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
                 <path d="M20 6L9 17l-5-5"/>
               </svg>
             </div>
-            <div style={{ fontWeight: 700, fontSize: 17, color: '#0E2A6B', marginBottom: 8 }}>Mission publiée !</div>
+            <div style={{ fontWeight: 700, fontSize: 17, color: '#0E2A6B', marginBottom: 8 }}>
+              {publishedUrl ? 'Mission publiée !' : 'Mission validée !'}
+            </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
-              <strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> est maintenant marquée <strong style={{ color: '#16a34a' }}>Ready</strong> et disponible sur SharePoint.
+              <strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> est maintenant marquée <strong style={{ color: '#16a34a' }}>Ready</strong>.{' '}
+              {publishedUrl
+                ? 'Le fichier est disponible sur SharePoint.'
+                : "Elle n'a pas encore été publiée sur SharePoint. Vous pourrez le faire en revalidant la slide."}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {publishedUrl && (
