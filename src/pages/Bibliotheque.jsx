@@ -8,7 +8,7 @@ import { buildNativePptx } from '../utils/exportPptx'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
-import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, computeStatus, normalizeName } from '../constants'
+import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, MANAGEMENT_OPTIONS, SUJETS_MISSION, OUTILS, computeStatus, normalizeName } from '../constants'
 import ClientSelector from '../components/ClientSelector'
 import { getUser, logout } from './Login'
 
@@ -34,9 +34,12 @@ export default function Bibliotheque() {
 
   const [slides, setSlides]       = useState([])
   const [loading, setLoading]     = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [creating, setCreating]   = useState(false)
-  const [draft, setDraft]         = useState({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '' })
+  const [showModal, setShowModal]     = useState(false)
+  const [modalStep, setModalStep]     = useState(1)
+  const [creating, setCreating]       = useState(false)
+  const [newSujet, setNewSujet]       = useState('')
+  const [newOutil, setNewOutil]       = useState('')
+  const [draft, setDraft]         = useState({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
 
   /* Filtres */
   const [search,       setSearch]       = useState('')
@@ -57,6 +60,8 @@ export default function Bibliotheque() {
   const [batchFormatMenu, setBatchFormatMenu] = useState(false)
   const batchMenuRef                          = useRef(null)
   const [activeView,      setActiveView]      = useState('all')
+  const [showDateMenu,    setShowDateMenu]    = useState(false)
+  const dateMenuRef                           = useRef(null)
 
   const toggleSelect = (id) =>
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -147,6 +152,13 @@ export default function Bibliotheque() {
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [batchFormatMenu])
+
+  useEffect(() => {
+    if (!showDateMenu) return
+    const h = (e) => { if (dateMenuRef.current && !dateMenuRef.current.contains(e.target)) setShowDateMenu(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [showDateMenu])
 
   useEffect(() => {
     supabase.from('slides').select('*').order('created_at', { ascending: false })
@@ -326,22 +338,29 @@ export default function Bibliotheque() {
         segmentation:      draft.segmentation || null,
         discipline:        draft.discipline || null,
         niveau_discipline: draft.niveau_discipline || null,
+        management:        draft.management || null,
+        sujets_mission:    draft.sujets_mission.length ? draft.sujets_mission : null,
+        outils:            draft.outils.length ? draft.outils : null,
       })
       .select()
       .single()
     if (error) { alert('Erreur : ' + error.message); setCreating(false); return }
     setCreating(false)
     setShowModal(false)
-    setDraft({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '' })
+    setDraft({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
     navigate(`/preview/${data.id}?edit=1`)
   }
 
   const openModal = () => {
-    setDraft({ prenom: '', nom: '', titre: '', type_mission: '' })
+    setDraft({ prenom: '', nom: '', titre: '', type_mission: '', client: '', segmentation: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
+    setModalStep(1)
+    setNewSujet('')
+    setNewOutil('')
     setShowModal(true)
   }
 
   const hasActiveFilters = search || dateFilter !== 'all' || typeFilter || statusFilter
+  const activeDateLabel  = DATE_OPTIONS.find(o => o.value === dateFilter)?.label ?? 'Toutes les dates'
 
   const typeCounts = useMemo(() => {
     const counts = { all: slides.length }
@@ -437,156 +456,125 @@ export default function Bibliotheque() {
         </button>
       </div>
 
-    <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
-
-      {/* ── Sidebar vues ── */}
-      <nav style={{ width: 220, flexShrink: 0, background: '#fff', borderRight: '1px solid #E8E6E1', overflowY: 'auto', padding: '20px 0', display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 18px 10px', margin: 0 }}>Vues</p>
-        {VIEWS.map(v => {
-          const active = activeView === v.id
-          const icons = {
-            all:     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>,
-            favoris: <svg width="14" height="14" viewBox="0 0 16 16" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13.5S1.5 9.5 1.5 5.5a3.5 3.5 0 0 1 6.5-1.8A3.5 3.5 0 0 1 14.5 5.5c0 4-6.5 8-6.5 8z"/></svg>,
-            segment: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 15V8l6-6 6 6v7"/><path d="M6 15v-4h4v4"/></svg>,
-            niveau:  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="11" width="4" height="4" rx="0.5"/><rect x="6" y="7" width="4" height="8" rx="0.5"/><rect x="11" y="3" width="4" height="12" rx="0.5"/></svg>,
-            produit: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1L1 4.5v7L8 15l7-3.5v-7L8 1z"/><path d="M1 4.5L8 8l7-3.5M8 8v7"/></svg>,
-            mission: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/><path d="M5 9h6M5 12h4"/></svg>,
-          }
-          return (
-            <button key={v.id} onClick={() => setActiveView(v.id)}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 18px', border: 'none', cursor: 'pointer',
-                textAlign: 'left', fontFamily: 'inherit', fontSize: 13,
-                borderLeft: `3px solid ${active ? '#0E2A6B' : 'transparent'}`,
-                background: active ? '#EEF1FA' : 'transparent',
-                color: active ? '#0E2A6B' : '#6E7385',
-                fontWeight: active ? 700 : 500,
-                transition: 'background 0.12s',
-              }}>
-              {icons[v.id]}
-              {v.label}
-            </button>
-          )
-        })}
-
-        {/* ── Période ── */}
-        <div style={{ height: 1, background: '#E8E6E1', margin: '16px 0 12px' }} />
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 18px 8px', margin: 0 }}>Période</p>
-        {DATE_OPTIONS.map(o => {
-          const active = dateFilter === o.value
-          return (
-            <button key={o.value} onClick={() => setDateFilter(o.value)}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center',
-                padding: '8px 18px', border: 'none', cursor: 'pointer',
-                textAlign: 'left', fontFamily: 'inherit', fontSize: 12,
-                borderLeft: `3px solid ${active ? '#0E2A6B' : 'transparent'}`,
-                background: active ? '#EEF1FA' : 'transparent',
-                color: active ? '#0E2A6B' : '#6E7385',
-                fontWeight: active ? 700 : 500,
-                transition: 'background 0.12s',
-              }}>
-              {o.label}
-            </button>
-          )
-        })}
-      </nav>
-
-      {/* ── Contenu scrollable ── */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '28px 24px 80px' }}>
+    <div style={{ height: 'calc(100vh - 56px)', overflowY: 'auto' }}>
+      <div style={{ maxWidth: 1020, margin: '0 auto', padding: '28px 32px 80px' }}>
 
       {/* ── Title + actions ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0E2A6B', margin: 0, letterSpacing: -0.4, fontFamily: "'Geomanist', Arial, sans-serif" }}>Annuaire</h1>
-          <span style={{ fontSize: 13, color: '#6E7385' }}>{slides.length} slide{slides.length !== 1 ? 's' : ''}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0E2A6B', margin: 0, letterSpacing: -0.4, fontFamily: "'Geomanist', Arial, sans-serif" }}>Annuaire des missions</h1>
+          <span style={{ fontSize: 13, color: '#6E7385' }}>{slides.length} mission{slides.length !== 1 ? 's' : ''}</span>
         </div>
         <div style={{ flex: 1 }} />
         {/* Search */}
-        <div style={{ height: 38, background: '#fff', border: '1px solid #E8E6E1', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 12px', width: 260 }}>
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round"><circle cx="7" cy="7" r="4.5" /><path d="M13 13l-2.5-2.5" /></svg>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher…"
-            style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: '#1A1E2C', background: 'transparent', fontFamily: 'inherit' }}
-          />
+        <div style={{ height: 36, background: '#fff', border: '1px solid #E8E6E1', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 12px', width: 240 }}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.6" strokeLinecap="round"><circle cx="7" cy="7" r="4.5" /><path d="M13 13l-2.5-2.5" /></svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
+            style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, color: '#1A1E2C', background: 'transparent', fontFamily: 'inherit' }} />
         </div>
-        <button
-          onClick={() => { setSelectMode(v => !v); setSelectedIds([]) }}
-          style={{ height: 38, padding: '0 16px', background: selectMode ? '#1A1E2C' : '#fff', color: selectMode ? '#fff' : '#1A1E2C', border: '1px solid #E8E6E1', borderRadius: 10, fontSize: 14, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontFamily: 'inherit' }}
-        >
-          {selectMode
-            ? '✕ Annuler'
-            : <><span style={{ width: 14, height: 14, border: '1.5px solid #6E7385', borderRadius: 4, display: 'inline-block' }} />Sélectionner</>
-          }
+        <button onClick={() => { setSelectMode(v => !v); setSelectedIds([]) }}
+          style={{ height: 36, padding: '0 14px', background: selectMode ? '#1A1E2C' : '#fff', color: selectMode ? '#fff' : '#1A1E2C', border: '1px solid #E8E6E1', borderRadius: 10, fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {selectMode ? '✕ Annuler' : <><span style={{ width: 13, height: 13, border: '1.5px solid #6E7385', borderRadius: 3, display: 'inline-block' }} />Sélectionner</>}
         </button>
         {!selectMode && (
-          <button onClick={openModal} style={{ height: 38, padding: '0 16px', background: '#E97433', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M8 3v10M3 8h10" /></svg>
+          <button onClick={openModal} style={{ height: 36, padding: '0 16px', background: '#E97433', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M8 3v10M3 8h10" /></svg>
             Ajouter une mission
           </button>
         )}
       </div>
 
+      {/* ── Onglets de vue ── */}
+      <div style={{ display: 'flex', borderBottom: '2px solid #E8E6E1', marginBottom: 20, gap: 0 }}>
+        {VIEWS.map(v => {
+          const active = activeView === v.id
+          const tabIcons = {
+            all:     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="1" width="6" height="6" rx="1.2"/><rect x="9" y="1" width="6" height="6" rx="1.2"/><rect x="1" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="9" width="6" height="6" rx="1.2"/></svg>,
+            segment: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 15V8l6-6 6 6v7"/><path d="M6 15v-4h4v4"/></svg>,
+            niveau:  <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="11" width="4" height="4" rx="0.8"/><rect x="6" y="7" width="4" height="8" rx="0.8"/><rect x="11" y="3" width="4" height="12" rx="0.8"/></svg>,
+            produit: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1L1 4.5v7L8 15l7-3.5v-7L8 1z"/><path d="M1 4.5L8 8l7-3.5M8 8v7"/></svg>,
+            mission: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="12" height="10" rx="1.2"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/><path d="M5 9h6M5 12h4"/></svg>,
+            favoris: <svg width="13" height="13" viewBox="0 0 16 16" fill={active ? '#E97433' : 'none'} stroke={active ? '#E97433' : 'currentColor'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13.5S1.5 9.5 1.5 5.5a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6.5 8-6.5 8z"/></svg>,
+          }
+          return (
+            <button key={v.id} onClick={() => setActiveView(v.id)}
+              style={{ padding: '10px 14px', border: 'none', background: active ? '#fff' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 700 : 500, color: active ? (v.id === 'favoris' ? '#E97433' : '#0E2A6B') : '#6E7385', borderBottom: `2px solid ${active ? (v.id === 'favoris' ? '#E97433' : '#0E2A6B') : 'transparent'}`, marginBottom: -2, display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0, borderRadius: '8px 8px 0 0', transition: 'color .12s, background .12s' }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#F5F5F3' }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
+              {tabIcons[v.id]}
+              {v.label}
+            </button>
+          )
+        })}
+      </div>
+
       {/* ── Filtres ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
-        {/* Type — segmented control with counts */}
-        <div style={{ display: 'inline-flex', background: '#F3F1EC', borderRadius: 10, padding: 4, gap: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+
+        {/* Type */}
+        <div style={{ display: 'inline-flex', background: '#F3F1EC', borderRadius: 8, padding: 3, gap: 2 }}>
           {[{ k: null, label: 'Tous' }, ...TYPES.map(t => ({ k: t, label: t }))].map(({ k, label }) => {
             const active = typeFilter === k
-            const count = k === null ? null : typeCounts[k]
+            const count  = k === null ? null : typeCounts[k]
             return (
               <button key={String(k)} onClick={() => setTypeFilter(k)}
-                style={{ height: 30, padding: '0 10px', background: active ? '#fff' : 'transparent', color: active ? '#0E2A6B' : '#6E7385', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: active ? '0 1px 2px rgba(20,28,60,0.07)' : 'none', whiteSpace: 'nowrap' }}>
+                style={{ height: 28, padding: '0 10px', background: active ? '#fff' : 'transparent', color: active ? '#0E2A6B' : '#6E7385', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: active ? '0 1px 2px rgba(20,28,60,0.07)' : 'none', whiteSpace: 'nowrap' }}>
                 {label}
-                {count != null && (
-                  <span style={{ fontSize: 11, fontWeight: 700, background: active ? '#EEF1FA' : 'rgba(20,28,60,0.07)', color: active ? '#0E2A6B' : '#6E7385', padding: '1px 6px', borderRadius: 999, minWidth: 20, textAlign: 'center' }}>
-                    {count}
-                  </span>
-                )}
+                {count != null && <span style={{ fontSize: 10, fontWeight: 700, background: active ? '#EEF1FA' : 'rgba(20,28,60,0.07)', color: active ? '#0E2A6B' : '#6E7385', padding: '1px 5px', borderRadius: 999 }}>{count}</span>}
               </button>
             )
           })}
         </div>
 
-        <div style={{ width: 1, height: 22, background: '#E8E6E1' }} />
+        <div style={{ width: 1, height: 20, background: '#E8E6E1', flexShrink: 0 }} />
 
-        {/* Statut — segmented control with counts */}
-        <div style={{ display: 'inline-flex', background: '#F3F1EC', borderRadius: 10, padding: 4, gap: 2 }}>
-          {[
-            { k: null,    label: 'Tous',  dot: null },
-            { k: 'ready', label: 'Ready', dot: '#3EAE6E' },
-            { k: 'draft', label: 'Draft', dot: '#B8BCC8' },
-          ].map(({ k, label, dot }) => {
+        {/* Statut */}
+        <div style={{ display: 'inline-flex', background: '#F3F1EC', borderRadius: 8, padding: 3, gap: 2 }}>
+          {[{ k: null, label: 'Tous', dot: null }, { k: 'ready', label: 'Ready', dot: '#3EAE6E' }, { k: 'draft', label: 'Draft', dot: '#B8BCC8' }].map(({ k, label, dot }) => {
             const active = statusFilter === k
-            const count = k === null ? null : statusCounts[k]
+            const count  = k === null ? null : statusCounts[k]
             return (
               <button key={String(k)} onClick={() => setStatusFilter(k)}
-                style={{ height: 30, padding: '0 10px', background: active ? '#fff' : 'transparent', color: active ? '#0E2A6B' : '#6E7385', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: active ? '0 1px 2px rgba(20,28,60,0.07)' : 'none' }}>
-                {dot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
+                style={{ height: 28, padding: '0 10px', background: active ? '#fff' : 'transparent', color: active ? '#0E2A6B' : '#6E7385', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: active ? '0 1px 2px rgba(20,28,60,0.07)' : 'none' }}>
+                {dot && <span style={{ width: 6, height: 6, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
                 {label}
-                {count != null && (
-                  <span style={{ fontSize: 11, fontWeight: 700, background: active ? '#EEF1FA' : 'rgba(20,28,60,0.07)', color: active ? '#0E2A6B' : '#6E7385', padding: '1px 6px', borderRadius: 999, minWidth: 20, textAlign: 'center' }}>
-                    {count}
-                  </span>
-                )}
+                {count != null && <span style={{ fontSize: 10, fontWeight: 700, background: active ? '#EEF1FA' : 'rgba(20,28,60,0.07)', color: active ? '#0E2A6B' : '#6E7385', padding: '1px 5px', borderRadius: 999 }}>{count}</span>}
               </button>
             )
           })}
+        </div>
+
+        <div style={{ width: 1, height: 20, background: '#E8E6E1', flexShrink: 0 }} />
+
+        {/* Période */}
+        <div ref={dateMenuRef} style={{ position: 'relative' }}>
+          <button onClick={() => setShowDateMenu(v => !v)}
+            style={{ height: 28, padding: '0 10px', background: dateFilter !== 'all' ? '#EEF1FA' : '#F3F1EC', color: dateFilter !== 'all' ? '#0E2A6B' : '#6E7385', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1v3M11 1v3M2 7h12"/></svg>
+            {activeDateLabel}
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3 5l3 3 3-3"/></svg>
+          </button>
+          {showDateMenu && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, background: '#fff', borderRadius: 10, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)', border: '1px solid #E8E6E1', minWidth: 180, zIndex: 300 }}>
+              {DATE_OPTIONS.map(o => (
+                <button key={o.value} onClick={() => { setDateFilter(o.value); setShowDateMenu(false) }}
+                  style={{ width: '100%', background: dateFilter === o.value ? '#EEF1FA' : 'none', border: 'none', padding: '8px 12px', fontSize: 13, color: dateFilter === o.value ? '#0E2A6B' : '#1A1E2C', fontWeight: dateFilter === o.value ? 700 : 500, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit' }}
+                  onMouseEnter={e => { if (dateFilter !== o.value) e.currentTarget.style.background = '#F3F1EC' }}
+                  onMouseLeave={e => { if (dateFilter !== o.value) e.currentTarget.style.background = 'none' }}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {hasActiveFilters && (
-          <button
-            onClick={() => { setSearch(''); setDateFilter('all'); setTypeFilter(null); setStatusFilter(null) }}
-            style={{ background: 'none', border: 'none', color: '#6E7385', fontSize: 12, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
-          >
+          <button onClick={() => { setSearch(''); setDateFilter('all'); setTypeFilter(null); setStatusFilter(null) }}
+            style={{ height: 28, padding: '0 10px', background: 'none', border: 'none', color: '#94a3b8', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8"/></svg>
             Réinitialiser
           </button>
         )}
-
       </div>
 
       {/* ── Sections ── */}
@@ -618,7 +606,7 @@ export default function Bibliotheque() {
         /* ── Vues groupées ── */
         groupedSlides.length === 0 ? (
           <p style={{ color: '#94a3b8', fontSize: 13 }}>
-            {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune slide.'}
+            {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune mission.'}
           </p>
         ) : groupedSlides.map(({ label, count, slides: gs, subGroups }) => (
           <div key={label} style={{ marginBottom: 44 }}>
@@ -651,12 +639,12 @@ export default function Bibliotheque() {
           </div>
         ))
       ) : (
-        /* ── Vue par défaut : Mes slides / Autres slides ── */
+        /* ── Vue par défaut : Mes missions / Autres missions ── */
         <>
-          <SectionHeader title="Mes slides" count={myFilteredSlides.length} />
+          <SectionHeader title="Mes missions" count={myFilteredSlides.length} />
           {myFilteredSlides.length === 0 ? (
             <p style={{ color: '#94a3b8', fontSize: 13, marginBottom: 36 }}>
-              {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune slide pour l\'instant. Créez-en une !'}
+              {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune mission pour l\'instant. Créez-en une !'}
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 40 }}>
@@ -668,7 +656,7 @@ export default function Bibliotheque() {
               ))}
             </div>
           )}
-          <SectionHeader title="Autres slides" count={othersFilteredSlides.length} />
+          <SectionHeader title="Autres missions" count={othersFilteredSlides.length} />
           {othersFilteredSlides.length === 0 ? (
             <p style={{ color: '#94a3b8', fontSize: 13 }}>
               {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune autre slide.'}
@@ -700,7 +688,7 @@ export default function Bibliotheque() {
             </span>
           ) : (
             <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
-              {selectedIds.length} slide{selectedIds.length > 1 ? 's' : ''} sélectionnée{selectedIds.length > 1 ? 's' : ''}
+              {selectedIds.length} mission{selectedIds.length > 1 ? 's' : ''} sélectionnée{selectedIds.length > 1 ? 's' : ''}
             </span>
           )}
           <button
@@ -790,133 +778,229 @@ export default function Bibliotheque() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
         >
-          <div style={{ background: '#fff', borderRadius: 14, padding: '32px 32px 28px', width: 460, boxShadow: '0 24px 64px rgba(0,0,0,0.28)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ margin: '0 0 6px', color: '#002882', fontSize: 20, fontWeight: 800, fontFamily: "'Publica Play', Arial, sans-serif" }}>
-              Nouvelle slide
-            </h2>
-            <p style={{ margin: '0 0 24px', color: '#94a3b8', fontSize: 13 }}>
-              Le consultant et le titre apparaîtront dans l'annuaire.
-            </p>
+          <div style={{ background: '#fff', borderRadius: 14, padding: '32px 32px 28px', width: 480, boxShadow: '0 24px 64px rgba(0,0,0,0.28)', maxHeight: '90vh', overflowY: 'auto' }}>
 
-            {[
-              { label: 'Prénom', key: 'prenom', placeholder: 'Ex : Marie' },
-              { label: 'Nom', key: 'nom', placeholder: 'Ex : Dupont' },
-              { label: 'Titre de la carte', key: 'titre', placeholder: 'Ex : Transformation digitale RH' },
-            ].map(({ label, key, placeholder }) => (
-              <div key={key} style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>{label}</label>
-                <input
-                  value={draft[key]}
-                  onChange={(e) => setDraft((p) => ({ ...p, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                  autoFocus={key === 'prenom'}
-                  style={modalInput}
-                  onFocus={(e) => (e.target.style.borderColor = '#002882')}
-                  onBlur={(e) => (e.target.style.borderColor = '#e2e8f0')}
+            {/* Header + indicateur étape */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <h2 style={{ margin: 0, color: '#002882', fontSize: 20, fontWeight: 800, fontFamily: "'Publica Play', Arial, sans-serif" }}>
+                Nouvelle slide
+              </h2>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8' }}>{modalStep} / 2</span>
+            </div>
+            {/* Barre de progression */}
+            <div style={{ height: 3, background: '#f1f5f9', borderRadius: 99, marginBottom: 24 }}>
+              <div style={{ height: '100%', width: modalStep === 1 ? '50%' : '100%', background: '#E97433', borderRadius: 99, transition: 'width .25s' }} />
+            </div>
+
+            {/* ── Étape 1 ── */}
+            {modalStep === 1 && (
+              <>
+                {[
+                  { label: 'Prénom', key: 'prenom', placeholder: 'Ex : Marie' },
+                  { label: 'Nom', key: 'nom', placeholder: 'Ex : Dupont' },
+                  { label: 'Titre de la carte', key: 'titre', placeholder: 'Ex : Transformation digitale RH' },
+                ].map(({ label, key, placeholder }) => (
+                  <div key={key} style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>{label}</label>
+                    <input
+                      value={draft[key]}
+                      onChange={(e) => setDraft((p) => ({ ...p, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      onKeyDown={(e) => e.key === 'Enter' && canCreate && setModalStep(2)}
+                      autoFocus={key === 'prenom'}
+                      style={modalInput}
+                      onFocus={(e) => (e.target.style.borderColor = '#002882')}
+                      onBlur={(e) => (e.target.style.borderColor = '#e2e8f0')}
+                    />
+                  </div>
+                ))}
+
+                <ClientSelector
+                  client={draft.client}
+                  segmentation={draft.segmentation}
+                  onChange={({ client, segmentation }) => setDraft(p => ({ ...p, client, segmentation }))}
                 />
-              </div>
-            ))}
 
-            <ClientSelector
-              client={draft.client}
-              segmentation={draft.segmentation}
-              onChange={({ client, segmentation }) => setDraft(p => ({ ...p, client, segmentation }))}
-            />
+                {/* Type de mission */}
+                <div style={{ marginBottom: 24 }}>
+                  <label style={labelStyle}>Type de mission</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                    {TYPES.map(t => {
+                      const active = draft.type_mission === t
+                      return (
+                        <button key={t} onClick={() => setDraft(p => ({ ...p, type_mission: active ? '' : t }))}
+                          style={{ background: active ? TYPE_COLORS[t] : '#f1f5f9', color: active ? '#fff' : '#475569', border: active ? `2px solid ${TYPE_COLORS[t]}` : '2px solid transparent', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                          {t}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
 
-            {/* Discipline */}
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Discipline</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                {DISCIPLINES.map(d => {
-                  const active = draft.discipline === d
-                  return (
-                    <button key={d} onClick={() => setDraft(p => ({ ...p, discipline: active ? '' : d }))}
-                      style={{
-                        background: active ? '#0E2A6B' : '#f1f5f9',
-                        color: active ? '#fff' : '#475569',
-                        border: active ? '2px solid #0E2A6B' : '2px solid transparent',
-                        borderRadius: 20, padding: '6px 16px',
-                        fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                      }}>
-                      {d}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setModalStep(2)} disabled={!canCreate}
+                    style={{ ...ctaBtn, flex: 1, opacity: canCreate ? 1 : 0.45, cursor: canCreate ? 'pointer' : 'not-allowed' }}>
+                    Suivant →
+                  </button>
+                  <button onClick={() => setShowModal(false)}
+                    style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit' }}>
+                    Annuler
+                  </button>
+                </div>
+              </>
+            )}
 
-            {/* Niveau */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={labelStyle}>Niveau</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                {NIVEAUX.map(n => {
-                  const active = draft.niveau_discipline === n
-                  return (
-                    <button key={n} onClick={() => setDraft(p => ({ ...p, niveau_discipline: active ? '' : n }))}
-                      style={{
-                        background: active ? '#E97433' : '#f1f5f9',
-                        color: active ? '#fff' : '#475569',
-                        border: active ? '2px solid #E97433' : '2px solid transparent',
-                        borderRadius: 20, padding: '6px 16px',
-                        fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                      }}>
-                      {n}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            {/* ── Étape 2 ── */}
+            {modalStep === 2 && (
+              <>
+                {/* Discipline */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Discipline</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                    {DISCIPLINES.map(d => {
+                      const active = draft.discipline === d
+                      return (
+                        <button key={d} onClick={() => setDraft(p => ({ ...p, discipline: active ? '' : d }))}
+                          style={{ background: active ? '#0E2A6B' : '#f1f5f9', color: active ? '#fff' : '#475569', border: active ? '2px solid #0E2A6B' : '2px solid transparent', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {d}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
 
-            {/* Type de mission */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={labelStyle}>Type de mission</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                {TYPES.map(t => {
-                  const active = draft.type_mission === t
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => setDraft(p => ({ ...p, type_mission: active ? '' : t }))}
-                      style={{
-                        background: active ? TYPE_COLORS[t] : '#f1f5f9',
-                        color: active ? '#fff' : '#475569',
-                        border: active ? `2px solid ${TYPE_COLORS[t]}` : '2px solid transparent',
-                        borderRadius: 20,
-                        padding: '6px 16px',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        transition: 'all 0.15s',
+                {/* Niveau */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Niveau</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                    {NIVEAUX.map(n => {
+                      const active = draft.niveau_discipline === n
+                      return (
+                        <button key={n} onClick={() => setDraft(p => ({ ...p, niveau_discipline: active ? '' : n }))}
+                          style={{ background: active ? '#E97433' : '#f1f5f9', color: active ? '#fff' : '#475569', border: active ? '2px solid #E97433' : '2px solid transparent', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {n}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Management */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Management</label>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    {MANAGEMENT_OPTIONS.map(opt => {
+                      const active = draft.management === opt
+                      return (
+                        <button key={opt} onClick={() => setDraft(p => ({ ...p, management: active ? '' : opt }))}
+                          style={{ background: active ? '#0E2A6B' : '#f1f5f9', color: active ? '#fff' : '#475569', border: active ? '2px solid #0E2A6B' : '2px solid transparent', borderRadius: 20, padding: '6px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {opt}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Sujets de mission */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Sujets de mission</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    {[...SUJETS_MISSION, ...draft.sujets_mission.filter(s => !SUJETS_MISSION.includes(s))].map(s => {
+                      const active = draft.sujets_mission.includes(s)
+                      return (
+                        <button key={s} onClick={() => setDraft(p => ({ ...p, sujets_mission: active ? p.sujets_mission.filter(x => x !== s) : [...p.sujets_mission, s] }))}
+                          style={{ background: active ? '#0E2A6B' : '#f1f5f9', color: active ? '#fff' : '#475569', border: active ? '2px solid #0E2A6B' : '2px solid transparent', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {s}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <input
+                      value={newSujet}
+                      onChange={e => setNewSujet(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && newSujet.trim() && !draft.sujets_mission.includes(newSujet.trim())) {
+                          setDraft(p => ({ ...p, sujets_mission: [...p.sujets_mission, newSujet.trim()] }))
+                          setNewSujet('')
+                        }
                       }}
-                    >
-                      {t}
+                      placeholder="Autre…"
+                      style={{ ...modalInput, flex: 1, height: 32, padding: '0 10px', fontSize: 12 }}
+                      onFocus={e => e.target.style.borderColor = '#002882'}
+                      onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                    />
+                    <button
+                      onClick={() => {
+                        if (newSujet.trim() && !draft.sujets_mission.includes(newSujet.trim())) {
+                          setDraft(p => ({ ...p, sujets_mission: [...p.sujets_mission, newSujet.trim()] }))
+                          setNewSujet('')
+                        }
+                      }}
+                      style={{ height: 32, padding: '0 12px', background: newSujet.trim() ? '#0E2A6B' : '#e2e8f0', color: newSujet.trim() ? '#fff' : '#94a3b8', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: newSujet.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+                      +
                     </button>
-                  )
-                })}
-              </div>
-            </div>
+                  </div>
+                </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={handleCreate}
-                disabled={creating || !canCreate}
-                style={{ ...ctaBtn, flex: 1, opacity: canCreate ? 1 : 0.45, cursor: canCreate ? 'pointer' : 'not-allowed' }}
-              >
-                {creating ? 'Création…' : 'Créer la slide →'}
-              </button>
-              <button
-                onClick={() => setShowModal(false)}
-                style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
-              >
-                Annuler
-              </button>
-            </div>
+                {/* Outils */}
+                <div style={{ marginBottom: 24 }}>
+                  <label style={labelStyle}>Outils</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    {[...OUTILS, ...draft.outils.filter(o => !OUTILS.includes(o))].map(o => {
+                      const active = draft.outils.includes(o)
+                      return (
+                        <button key={o} onClick={() => setDraft(p => ({ ...p, outils: active ? p.outils.filter(x => x !== o) : [...p.outils, o] }))}
+                          style={{ background: active ? '#E97433' : '#f1f5f9', color: active ? '#fff' : '#475569', border: active ? '2px solid #E97433' : '2px solid transparent', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {o}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <input
+                      value={newOutil}
+                      onChange={e => setNewOutil(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && newOutil.trim() && !draft.outils.includes(newOutil.trim())) {
+                          setDraft(p => ({ ...p, outils: [...p.outils, newOutil.trim()] }))
+                          setNewOutil('')
+                        }
+                      }}
+                      placeholder="Autre…"
+                      style={{ ...modalInput, flex: 1, height: 32, padding: '0 10px', fontSize: 12 }}
+                      onFocus={e => e.target.style.borderColor = '#E97433'}
+                      onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                    />
+                    <button
+                      onClick={() => {
+                        if (newOutil.trim() && !draft.outils.includes(newOutil.trim())) {
+                          setDraft(p => ({ ...p, outils: [...p.outils, newOutil.trim()] }))
+                          setNewOutil('')
+                        }
+                      }}
+                      style={{ height: 32, padding: '0 12px', background: newOutil.trim() ? '#E97433' : '#e2e8f0', color: newOutil.trim() ? '#fff' : '#94a3b8', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: newOutil.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setModalStep(1)}
+                    style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit' }}>
+                    ← Retour
+                  </button>
+                  <button onClick={handleCreate} disabled={creating}
+                    style={{ ...ctaBtn, flex: 1, opacity: creating ? 0.7 : 1 }}>
+                    {creating ? 'Création…' : 'Créer la mission →'}
+                  </button>
+                </div>
+              </>
+            )}
+
           </div>
         </div>
       )}
-    </div>
     </div>
     </div>
     </div>

@@ -1,5 +1,29 @@
 export const TYPES = ['Conseil', 'Produit', 'Qualité', 'Coaching & Formation']
 
+export const MANAGEMENT_OPTIONS = ['Oui', 'Non']
+
+export const SUJETS_MISSION = [
+  'Agent IA', 'Skills IA',
+  'Gestion des sprints', 'Gestion des US', 'Définition des process Delivery',
+  'Définition des process/méthode Discovery', 'Définition du Dataset',
+  'Création de maquette', 'Animation d\'ateliers parties prenantes',
+  'Segmentation des utilisateurs', 'Modélisation parcours utilisateur',
+  'Entretiens utilisateurs', 'Analyse KPIs', 'Veille marché',
+  'Définition des OKR', 'Gestion des parties prenantes',
+  'Mise en place gouvernance', 'Définition de la roadmap',
+  'Gestion multi-squads/transverse', 'Développement de Product People',
+  'Mise en place de rituels',
+  'SEO', 'Monétisation', 'Moteur de recherche', 'Stack vidéo', 'Modèle d\'abonnement',
+]
+
+export const OUTILS = [
+  'Jira', 'Confluence', 'Notion', 'Jira Discovery', 'Miro', 'Figma',
+  'ABTasty', 'Kameloon',
+  'Google Analytics', 'Piano', 'Contentsquare', 'Google Search Console',
+  'Semrush', 'Amplitude', 'Looker', 'Algolia',
+  'Postman', 'Claude', 'Gemini', 'Salesforce',
+]
+
 export const DISCIPLINES = [
   'Product Management',
   'Product Ops',
