@@ -64,11 +64,11 @@ export function buildSharePointFileUrl(slide) {
 
 // Supprime le fichier PPTX de SharePoint
 export async function deleteSlideFromSharePoint(slide, token = null) {
-  const filename = `${buildPptxFilename(slide)}.pptx`
-  const parts = [...SP_FOLDER.split('/'), filename]
-  const encodedPath = parts.map(encodeURIComponent).join('/')
-  const url = `https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_SITE}:/drive/root:/${encodedPath}`
   if (!token) token = await getToken()
+  const filename = `${buildPptxFilename(slide)}.pptx`
+  const siteId = await getSiteId(token)
+  const encodedPath = [...SP_FOLDER.split('/'), filename].map(encodeURIComponent).join('/')
+  const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}`
   const res = await fetch(url, {
     method: 'DELETE',
     headers: { 'Authorization': `Bearer ${token}` },
