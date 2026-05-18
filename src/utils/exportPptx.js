@@ -28,7 +28,12 @@ const MAPPING = [
   [' Label 3',          d => d.metrique_3_label   ? ' ' + d.metrique_3_label : ''],
 ]
 
-// Logo position: above "Notre impact" in the right column (EMU units)
+// Exact EMU positions from template inspection
+const TAG_Y     = 2423877
+const TAG_START = 617258
+const TAG_CY    = 300426
+const TAG_GAP   = 137099
+
 const LOGO = { x: 8572362, y: 750000, cx: 2847796, cy: 1083659 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -42,19 +47,77 @@ function escapeXml(s) {
     .replace(/'/g, '&apos;')
 }
 
+// 1. Remove metric shapes when empty — must run BEFORE applyData (uses placeholder text)
+function removeEmptyMetrics(xml, data) {
+  const checks = [
+    { placeholder: 'Métrique 3', hasData: !!(data.metrique_3_chiffre || data.metrique_3_label) },
+    { placeholder: 'Métrique 2', hasData: !!(data.metrique_2_chiffre || data.metrique_2_label) },
+    { placeholder: 'Métrique 1', hasData: !!(data.metrique_1_chiffre || data.metrique_1_label) },
+  ]
+  for (const { placeholder, hasData } of checks) {
+    if (hasData) continue
+    for (const m of [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)]) {
+      if (m[0].includes(`<a:t>${placeholder}</a:t>`)) {
+        xml = xml.replace(m[0], '')
+        break
+      }
+    }
+  }
+  return xml
+}
+
+// 2. Text replacement with XML escaping + title truncation
 function applyData(slideXml, data) {
   let xml = slideXml
   for (const [placeholder, getValue] of MAPPING) {
     const escaped = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     xml = xml.replace(
       new RegExp(`(<a:t>)${escaped}(</a:t>)`),
-      (_, open, close) => `${open}${escapeXml(getValue(data))}${close}`,
+      (_, open, close) => {
+        let val = escapeXml(getValue(data))
+        // Cap title at 80 chars to avoid overflow
+        if (placeholder === 'Titre de la slide' && val.length > 80) {
+          val = val.slice(0, 77) + '…'
+        }
+        return `${open}${val}${close}`
+      },
     )
   }
   return xml
 }
 
-function insertLogoPic(slideXml, rId) {
+// 3. Adaptive tag widths — must run BEFORE applyData (finds shapes by placeholder text)
+// lIns + rIns padding in template = 432 000 EMU; font = 10pt bold ≈ 105 000 EMU/char
+function processTagShapes(xml, tags) {
+  const PADDING_W  = 432000
+  const EMU_CHAR   = 105000
+  let currentX = TAG_START
+
+  for (let i = 0; i < 4; i++) {
+    const tagText    = tags?.[i]?.trim() || ''
+    const placeholder = `Tag ${i + 1}`
+    let   found       = null
+
+    for (const m of [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)]) {
+      if (m[0].includes(`<a:t>${placeholder}</a:t>`)) { found = m[0]; break }
+    }
+    if (!found) continue
+
+    if (!tagText) { xml = xml.replace(found, ''); continue }
+
+    const newCx = Math.max(750000, tagText.length * EMU_CHAR + PADDING_W)
+    const newSp = found
+      .replace(/<a:off x="\d+" y="/,  `<a:off x="${currentX}" y="`)
+      .replace(/<a:ext cx="\d+" cy="/, `<a:ext cx="${newCx}" cy="`)
+      .replace(/wrap="[^"]*"/,         'wrap="none"')  // prevent any text wrapping
+    xml = xml.replace(found, newSp)
+    currentX += newCx + TAG_GAP
+  }
+  return xml
+}
+
+// 4. Logo insertion with aspect-ratio-correct contain + centering
+function insertLogoPic(slideXml, rId, x = LOGO.x, y = LOGO.y, cx = LOGO.cx, cy = LOGO.cy) {
   const pic = [
     '<p:pic>',
       '<p:nvPicPr>',
@@ -64,13 +127,41 @@ function insertLogoPic(slideXml, rId) {
       '</p:nvPicPr>',
       `<p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>`,
       '<p:spPr>',
-        `<a:xfrm><a:off x="${LOGO.x}" y="${LOGO.y}"/><a:ext cx="${LOGO.cx}" cy="${LOGO.cy}"/></a:xfrm>`,
+        `<a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>`,
         '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>',
         '<a:ln><a:noFill/></a:ln>',
       '</p:spPr>',
     '</p:pic>',
   ].join('')
   return slideXml.replace('</p:spTree>', `${pic}</p:spTree>`)
+}
+
+// Get intrinsic pixel dimensions of a fetched image (PNG/JPEG only)
+async function getImageDimensions(arrayBuffer) {
+  try {
+    const blob = new Blob([arrayBuffer])
+    const url  = URL.createObjectURL(blob)
+    return await new Promise(resolve => {
+      const img    = new Image()
+      img.onload   = () => { resolve({ w: img.naturalWidth, h: img.naturalHeight }); URL.revokeObjectURL(url) }
+      img.onerror  = () => { resolve(null); URL.revokeObjectURL(url) }
+      img.src      = url
+    })
+  } catch { return null }
+}
+
+// Calculate contain position inside LOGO box, centered
+function containLogo(imgW, imgH) {
+  const boxRatio = LOGO.cx / LOGO.cy
+  const imgRatio = imgW   / imgH
+  let cx, cy
+  if (imgRatio > boxRatio) { cx = LOGO.cx; cy = Math.round(LOGO.cx / imgRatio) }
+  else                     { cy = LOGO.cy; cx = Math.round(LOGO.cy * imgRatio) }
+  return {
+    x:  LOGO.x + Math.round((LOGO.cx - cx) / 2),
+    y:  LOGO.y + Math.round((LOGO.cy - cy) / 2),
+    cx, cy,
+  }
 }
 
 // Returns the image ArrayBuffer + file extension, or null on failure
@@ -86,7 +177,7 @@ async function fetchLogo(url) {
   } catch { return null }
 }
 
-// Rels XML for cloned slides, optionally including a logo image relationship
+// Rels XML for cloned slides
 function makeSlideRels(logoRId = null, logoMedia = null) {
   const logoRel = logoRId && logoMedia
     ? `<Relationship Id="${logoRId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${logoMedia}"/>`
@@ -123,25 +214,32 @@ export async function buildNativePptx(slides) {
   const zip       = await JSZip.loadAsync(buf)
   const slide1Xml = await zip.files['ppt/slides/slide1.xml'].async('string')
 
-  // Process each slide: text replacement + logo injection
   for (let i = 0; i < slides.length; i++) {
     const n    = i + 1
     const data = slides[i]
-    let   xml  = applyData(slide1Xml, data)
+
+    // Pipeline: remove empty metrics → adapt tags → replace text
+    let xml = removeEmptyMetrics(slide1Xml, data)
+    xml     = processTagShapes(xml, data.tags)
+    xml     = applyData(xml, data)
 
     if (data.logo_url) {
       const logo = await fetchLogo(data.logo_url)
       if (logo) {
         const mediaName = `logo_${n}.${logo.ext}`
-        // rId3 for slide1 (rId1=layout, rId2=notesSlide already taken)
-        // rId3 for slides 2+ as well (our minimal rels only use rId1)
-        const logoRId = 'rId3'
+        const logoRId   = 'rId3'
 
         zip.file(`ppt/media/${mediaName}`, logo.data)
-        xml = insertLogoPic(xml, logoRId)
+
+        // Aspect-ratio-correct logo placement (skip for SVG)
+        let logoPos = { x: LOGO.x, y: LOGO.y, cx: LOGO.cx, cy: LOGO.cy }
+        if (logo.ext !== 'svg') {
+          const dims = await getImageDimensions(logo.data)
+          if (dims?.w && dims?.h) logoPos = containLogo(dims.w, dims.h)
+        }
+        xml = insertLogoPic(xml, logoRId, logoPos.x, logoPos.y, logoPos.cx, logoPos.cy)
 
         if (n === 1) {
-          // Append to existing slide1 rels
           const relsXml = await zip.files['ppt/slides/_rels/slide1.xml.rels'].async('string')
           const newRel  = `<Relationship Id="${logoRId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaName}"/>`
           zip.file('ppt/slides/_rels/slide1.xml.rels',
@@ -162,7 +260,6 @@ export async function buildNativePptx(slides) {
 
   // Batch: register extra slides in presentation metadata
   if (slides.length > 1) {
-    // sldIdLst — slide 1 keeps rId6, slides 2+ get rId101+
     const presXml = await zip.files['ppt/presentation.xml'].async('string')
     const sldIds  = slides.map((_, i) => {
       const rId = i === 0 ? 'rId6' : `rId${100 + i}`
@@ -172,7 +269,6 @@ export async function buildNativePptx(slides) {
       presXml.replace(/<p:sldIdLst>[\s\S]*?<\/p:sldIdLst>/, `<p:sldIdLst>${sldIds}</p:sldIdLst>`),
     )
 
-    // Add relationships for slides 2+ (slide 1's rId6 already exists)
     const relsXml    = await zip.files['ppt/_rels/presentation.xml.rels'].async('string')
     const newRelTags = slides.slice(1).map((_, i) =>
       `<Relationship Id="rId${101 + i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i + 2}.xml"/>`,
@@ -181,7 +277,6 @@ export async function buildNativePptx(slides) {
       relsXml.replace('</Relationships>', `${newRelTags}</Relationships>`),
     )
 
-    // Register new slide content types
     const ctXml    = await zip.files['[Content_Types].xml'].async('string')
     const newTypes = slides.slice(1).map((_, i) =>
       `<Override PartName="/ppt/slides/slide${i + 2}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`,
@@ -195,7 +290,7 @@ export async function buildNativePptx(slides) {
   })
 
   return {
-    getBlob: generateBlob,
+    getBlob:   generateBlob,
     writeFile: async ({ fileName }) => {
       const blob = await generateBlob()
       const url  = URL.createObjectURL(blob)
