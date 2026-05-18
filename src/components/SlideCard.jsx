@@ -5,7 +5,7 @@ import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
 import { normalizeName } from '../constants'
 import { getUser } from '../pages/Login'
 import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
-import { uploadSlideToSharePoint, deleteSlideFromSharePoint, buildSharePointFileUrl } from '../utils/sharepoint'
+import { uploadSlideToSharePoint, deleteSlideFromSharePoint, buildSharePointFileUrl, getToken } from '../utils/sharepoint'
 
 const THUMB_W  = 140
 const THUMB_H  = Math.round(THUMB_W * 9 / 16)   // 79px
@@ -76,6 +76,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
   const [showPublished,   setShowPublished]   = useState(false)
   const [spUrl,           setSpUrl]           = useState(slide.sharepoint_url || null)
   const [unvalidateToast, setUnvalidateToast] = useState(null)
+  const [spStep,          setSpStep]          = useState(null) // null | 'connecting' | 'uploading' | 'deleting'
   const exportMenuRef = useRef(null)
 
   const isOwner = user &&
@@ -117,29 +118,43 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     setValidating(true)
     skipSharePoint.current = false
     const next = !validated
+
+    // Acquérir le token immédiatement (contexte clic) pour éviter le blocage popup navigateur
+    let spToken = null
+    try {
+      setSpStep('connecting')
+      spToken = await getToken()
+    } catch (e) {
+      console.error('Token SharePoint:', e)
+    }
+    setSpStep(null)
+
     const { error } = await supabase.from('slides').update({ validated: next }).eq('id', slide.id)
     if (!error) {
       setValidated(next)
       onValidated?.(slide.id, next)
       if (next) {
         try {
-          const result = await uploadSlideToSharePoint(slide)
+          setSpStep('uploading')
+          const result = await uploadSlideToSharePoint(slide, spToken)
           if (!skipSharePoint.current && result?.webUrl) {
             await supabase.from('slides').update({ sharepoint_url: result.webUrl }).eq('id', slide.id)
+            setSpUrl(result.webUrl)
             setPublishedUrl(result.webUrl)
           }
         } catch (e) {
           console.error('SharePoint upload:', e)
         }
+        setSpStep(null)
         if (!skipSharePoint.current) {
           setConfirmValidate(false)
           setShowPublished(true)
         }
       } else {
-        // Retrait de validation : supprimer le fichier SharePoint si existant
         if (spUrl) {
           try {
-            await deleteSlideFromSharePoint(slide)
+            setSpStep('deleting')
+            await deleteSlideFromSharePoint(slide, spToken)
             await supabase.from('slides').update({ sharepoint_url: null }).eq('id', slide.id)
             setSpUrl(null)
             setUnvalidateToast({ ok: true, msg: 'Slide retirée et fichier supprimé de SharePoint.' })
@@ -147,6 +162,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
             console.error('SharePoint delete:', e)
             setUnvalidateToast({ ok: false, msg: 'Slide retirée. Échec de la suppression SharePoint.' })
           }
+          setSpStep(null)
           setTimeout(() => setUnvalidateToast(null), 4000)
         }
         setConfirmValidate(false)
@@ -429,7 +445,12 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={handleValidate} disabled={validating}
                 style={{ flex: 1, background: validated ? '#92521A' : '#16a34a', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: validating ? 'default' : 'pointer', opacity: validating ? 0.7 : 1, fontFamily: 'inherit' }}>
-                {validating ? 'Publication en cours…' : validated ? 'Retirer la validation' : 'Confirmer et publier'}
+                {spStep === 'connecting' ? 'Connexion SharePoint…'
+                  : spStep === 'uploading' ? 'Publication SharePoint…'
+                  : spStep === 'deleting'  ? 'Suppression SharePoint…'
+                  : validating             ? 'Sauvegarde…'
+                  : validated              ? 'Retirer la validation'
+                  :                         'Confirmer et publier'}
               </button>
               <button
                 onClick={validating ? handleSkipSharePoint : () => setConfirmValidate(false)}

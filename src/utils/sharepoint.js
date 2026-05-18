@@ -25,7 +25,7 @@ function getMsal() {
   return msalPromise
 }
 
-async function getToken() {
+export async function getToken() {
   const msal     = await getMsal()
   const accounts = msal.getAllAccounts()
 
@@ -50,12 +50,12 @@ export function buildSharePointFileUrl(slide) {
 }
 
 // Supprime le fichier PPTX de SharePoint
-export async function deleteSlideFromSharePoint(slide) {
+export async function deleteSlideFromSharePoint(slide, token = null) {
   const filename = `${buildPptxFilename(slide)}.pptx`
   const parts = [...SP_FOLDER.split('/'), filename]
   const encodedPath = parts.map(encodeURIComponent).join('/')
   const url = `https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_SITE}:/drive/root:/${encodedPath}`
-  const token = await getToken()
+  if (!token) token = await getToken()
   const res = await fetch(url, {
     method: 'DELETE',
     headers: { 'Authorization': `Bearer ${token}` },
@@ -68,11 +68,12 @@ export async function deleteSlideFromSharePoint(slide) {
 }
 
 // Génère le PPTX et l'uploade vers le dossier SharePoint cible
-export async function uploadSlideToSharePoint(slide) {
+// token optionnel : pré-acquis dans le contexte du clic pour éviter le blocage popup
+export async function uploadSlideToSharePoint(slide, token = null) {
   const pptx     = await buildNativePptx([slide])
   const blob     = await pptx.getBlob()
   const filename = `${buildPptxFilename(slide)}.pptx`
-  const token    = await getToken()
+  if (!token) token = await getToken()
 
   const encodedPath = [...SP_FOLDER.split('/'), filename].map(encodeURIComponent).join('/')
   const url = `https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_SITE}:/drive/root:/${encodedPath}:/content`
