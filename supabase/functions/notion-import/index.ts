@@ -154,18 +154,34 @@ Deno.serve(async (req) => {
 
   // Chercher si un slide existe déjà avec ce notion_page_id
   const checkRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/slides?notion_page_id=eq.${pageId}&select=id`,
+    `${SUPABASE_URL}/rest/v1/slides?notion_page_id=eq.${pageId}&select=id,client,logo_url,segmentation,discipline,niveau_discipline`,
     { headers: sbHeaders },
   )
-  const existing: Array<{ id: string }> = await checkRes.json()
+  const existing: Array<{
+    id: string
+    client: string | null
+    logo_url: string | null
+    segmentation: string | null
+    discipline: string | null
+    niveau_discipline: string | null
+  }> = await checkRes.json()
 
   let slideId: string
   if (existing.length > 0) {
     slideId = existing[0].id
+    const patch: Record<string, any> = { ...slide }
+
+    // Ne pas écraser les champs renseignés dans l'app si Notion renvoie null
+    for (const field of ['client', 'logo_url', 'segmentation', 'discipline', 'niveau_discipline'] as const) {
+      if (patch[field] === null && existing[0][field] !== null) {
+        delete patch[field]
+      }
+    }
+
     await fetch(`${SUPABASE_URL}/rest/v1/slides?id=eq.${slideId}`, {
       method: 'PATCH',
       headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
-      body: JSON.stringify(slide),
+      body: JSON.stringify(patch),
     })
   } else {
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/slides`, {
