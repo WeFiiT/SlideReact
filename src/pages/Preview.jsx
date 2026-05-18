@@ -219,28 +219,26 @@ export default function Preview() {
     return () => clearInterval(id)
   }, [])
 
-  // Flush pending debounced save on unmount
+  // Flush pending save on unmount
   useEffect(() => () => {
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current)
-      const data = pendingSave.current
-      if (data) {
-        supabase.from('slides').update({
-          titre:              data.titre,
-          sous_titre:         data.sous_titre,
-          contexte:           data.contexte,
-          tags:               data.tags,
-          perimetre:          data.perimetre,
-          enjeux:             data.enjeux,
-          impact:             data.impact,
-          metrique_1_chiffre: data.metrique_1_chiffre,
-          metrique_1_label:   data.metrique_1_label,
-          metrique_2_chiffre: data.metrique_2_chiffre,
-          metrique_2_label:   data.metrique_2_label,
-          metrique_3_chiffre: data.metrique_3_chiffre,
-          metrique_3_label:   data.metrique_3_label,
-        }).eq('id', id)
-      }
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    const data = pendingSave.current
+    if (data) {
+      supabase.from('slides').update({
+        titre:              data.titre,
+        sous_titre:         data.sous_titre,
+        contexte:           data.contexte,
+        tags:               data.tags,
+        perimetre:          data.perimetre,
+        enjeux:             data.enjeux,
+        impact:             data.impact,
+        metrique_1_chiffre: data.metrique_1_chiffre,
+        metrique_1_label:   data.metrique_1_label,
+        metrique_2_chiffre: data.metrique_2_chiffre,
+        metrique_2_label:   data.metrique_2_label,
+        metrique_3_chiffre: data.metrique_3_chiffre,
+        metrique_3_label:   data.metrique_3_label,
+      }).eq('id', id)
     }
   }, [])
 
