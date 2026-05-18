@@ -5,7 +5,7 @@ import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
 import { normalizeName } from '../constants'
 import { getUser } from '../pages/Login'
 import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
-import { uploadSlideToSharePoint, buildSharePointFileUrl } from '../utils/sharepoint'
+import { uploadSlideToSharePoint, deleteSlideFromSharePoint, buildSharePointFileUrl } from '../utils/sharepoint'
 
 const THUMB_W  = 140
 const THUMB_H  = Math.round(THUMB_W * 9 / 16)   // 79px
@@ -74,6 +74,8 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
   const [validated,       setValidated]       = useState(!!slide.validated)
   const [publishedUrl,    setPublishedUrl]    = useState(null)
   const [showPublished,   setShowPublished]   = useState(false)
+  const [spUrl,           setSpUrl]           = useState(slide.sharepoint_url || null)
+  const [unvalidateToast, setUnvalidateToast] = useState(null)
   const exportMenuRef = useRef(null)
 
   const isOwner = user &&
@@ -134,6 +136,19 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
           setShowPublished(true)
         }
       } else {
+        // Retrait de validation : supprimer le fichier SharePoint si existant
+        if (spUrl) {
+          try {
+            await deleteSlideFromSharePoint(slide)
+            await supabase.from('slides').update({ sharepoint_url: null }).eq('id', slide.id)
+            setSpUrl(null)
+            setUnvalidateToast({ ok: true, msg: 'Slide retirée et fichier supprimé de SharePoint.' })
+          } catch (e) {
+            console.error('SharePoint delete:', e)
+            setUnvalidateToast({ ok: false, msg: 'Slide retirée. Échec de la suppression SharePoint.' })
+          }
+          setTimeout(() => setUnvalidateToast(null), 4000)
+        }
         setConfirmValidate(false)
       }
     } else {
@@ -339,9 +354,9 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
                   </button>
                   {showMenu && (
                     <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, background: '#fff', borderRadius: 10, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)', border: '1px solid #f1f5f9', minWidth: 200, zIndex: 100 }}>
-                      {validated && slide.sharepoint_url && (
+                      {validated && spUrl && (
                         <a
-                          href={slide.sharepoint_url}
+                          href={spUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => { e.stopPropagation(); setShowMenu(false) }}
@@ -386,6 +401,17 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
         </div>
       </div>
 
+      {/* ── Toast retrait validation ── */}
+      {unvalidateToast && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: unvalidateToast.ok ? '#0E2A6B' : '#dc2626', color: '#fff', padding: '12px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.2)', zIndex: 3000, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+          {unvalidateToast.ok
+            ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l4 4 6-6"/></svg>
+            : <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 5v4M8 11v1"/><circle cx="8" cy="8" r="6"/></svg>
+          }
+          {unvalidateToast.msg}
+        </div>
+      )}
+
       {/* ── Modale validation / retrait ── */}
       {confirmValidate && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
@@ -396,7 +422,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
             </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
               {validated
-                ? <>La slide <strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
+                ? <><strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.{spUrl && <> <strong>Le fichier sera également supprimé du dossier SharePoint.</strong></>}</>
                 : <><strong>« {slide.card_titre || slide.titre || 'Sans titre'} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et <strong>publiée automatiquement sur SharePoint</strong> dans le dossier des références WeFiiT.</>
               }
             </div>

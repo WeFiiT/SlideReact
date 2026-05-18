@@ -322,7 +322,8 @@ export default function Bibliotheque() {
     return sorted.map(k => ({ label: k, count: byKey[k].length, slides: favsFirst(byKey[k]) }))
   }, [activeView, filteredSlides, user])
 
-  const canCreate = draft.prenom.trim() && draft.nom.trim() && draft.titre.trim()
+  const canCreate  = draft.prenom.trim() && draft.nom.trim() && draft.titre.trim() && draft.client.trim() && draft.segmentation.trim() && draft.type_mission
+  const canCreate2 = draft.discipline && draft.niveau_discipline && draft.management && draft.sujets_mission.length > 0 && draft.outils.length > 0
 
   const handleCreate = async () => {
     if (!canCreate) return
@@ -852,7 +853,7 @@ export default function Bibliotheque() {
                   { label: 'Titre de la carte', key: 'titre', placeholder: 'Ex : Transformation digitale RH' },
                 ].map(({ label, key, placeholder }) => (
                   <div key={key} style={{ marginBottom: 14 }}>
-                    <label style={labelStyle}>{label}</label>
+                    <label style={labelStyle}>{label} <span style={{ color: '#E97433' }}>*</span></label>
                     <input
                       value={draft[key]}
                       onChange={(e) => setDraft((p) => ({ ...p, [key]: e.target.value }))}
@@ -874,7 +875,7 @@ export default function Bibliotheque() {
 
                 {/* Type de mission */}
                 <div style={{ marginBottom: 24 }}>
-                  <label style={labelStyle}>Type de mission</label>
+                  <label style={labelStyle}>Type de mission <span style={{ color: '#E97433' }}>*</span></label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
                     {TYPES.map(t => {
                       const active = draft.type_mission === t
@@ -906,7 +907,7 @@ export default function Bibliotheque() {
               <>
                 {/* Discipline */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>Discipline</label>
+                  <label style={labelStyle}>Discipline <span style={{ color: '#E97433' }}>*</span></label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
                     {DISCIPLINES.map(d => {
                       const active = draft.discipline === d
@@ -922,7 +923,7 @@ export default function Bibliotheque() {
 
                 {/* Niveau */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>Niveau</label>
+                  <label style={labelStyle}>Niveau <span style={{ color: '#E97433' }}>*</span></label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
                     {NIVEAUX.map(n => {
                       const active = draft.niveau_discipline === n
@@ -938,7 +939,7 @@ export default function Bibliotheque() {
 
                 {/* Management */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>Management</label>
+                  <label style={labelStyle}>Management <span style={{ color: '#E97433' }}>*</span></label>
                   <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                     {MANAGEMENT_OPTIONS.map(opt => {
                       const active = draft.management === opt
@@ -954,7 +955,7 @@ export default function Bibliotheque() {
 
                 {/* Sujets de mission */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>Sujets de mission</label>
+                  <label style={labelStyle}>Sujets de mission <span style={{ color: '#E97433' }}>*</span></label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                     {[...SUJETS_MISSION, ...draft.sujets_mission.filter(s => !SUJETS_MISSION.includes(s))].map(s => {
                       const active = draft.sujets_mission.includes(s)
@@ -996,7 +997,7 @@ export default function Bibliotheque() {
 
                 {/* Outils */}
                 <div style={{ marginBottom: 24 }}>
-                  <label style={labelStyle}>Outils</label>
+                  <label style={labelStyle}>Outils <span style={{ color: '#E97433' }}>*</span></label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                     {[...OUTILS, ...draft.outils.filter(o => !OUTILS.includes(o))].map(o => {
                       const active = draft.outils.includes(o)
@@ -1041,8 +1042,8 @@ export default function Bibliotheque() {
                     style={{ background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit' }}>
                     ← Retour
                   </button>
-                  <button onClick={handleCreate} disabled={creating}
-                    style={{ ...ctaBtn, flex: 1, opacity: creating ? 0.7 : 1 }}>
+                  <button onClick={handleCreate} disabled={creating || !canCreate2}
+                    style={{ ...ctaBtn, flex: 1, opacity: (creating || !canCreate2) ? 0.45 : 1, cursor: canCreate2 ? 'pointer' : 'not-allowed' }}>
                     {creating ? 'Création…' : 'Créer la mission →'}
                   </button>
                 </div>

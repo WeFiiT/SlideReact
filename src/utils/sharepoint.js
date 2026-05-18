@@ -49,6 +49,24 @@ export function buildSharePointFileUrl(slide) {
   return `https://${SP_HOST}${SP_SITE}/Shared%20Documents/${parts.map(encodeURIComponent).join('/')}`
 }
 
+// Supprime le fichier PPTX de SharePoint
+export async function deleteSlideFromSharePoint(slide) {
+  const filename = `${buildPptxFilename(slide)}.pptx`
+  const parts = [...SP_FOLDER.split('/'), filename]
+  const encodedPath = parts.map(encodeURIComponent).join('/')
+  const url = `https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_SITE}:/drive/root:/${encodedPath}`
+  const token = await getToken()
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  })
+  // 404 = fichier inexistant, on considère ça OK
+  if (!res.ok && res.status !== 404) {
+    const detail = await res.text()
+    throw new Error(`Suppression SharePoint échouée (${res.status}): ${detail}`)
+  }
+}
+
 // Génère le PPTX et l'uploade vers le dossier SharePoint cible
 export async function uploadSlideToSharePoint(slide) {
   const pptx     = await buildNativePptx([slide])

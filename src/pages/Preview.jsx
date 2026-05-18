@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
-import { uploadSlideToSharePoint, buildSharePointFileUrl } from '../utils/sharepoint'
+import { uploadSlideToSharePoint, deleteSlideFromSharePoint, buildSharePointFileUrl } from '../utils/sharepoint'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { getUser } from './Login'
@@ -72,6 +72,7 @@ export default function Preview() {
   const [validating,      setValidating]      = useState(false)
   const [publishedUrl,    setPublishedUrl]    = useState(null)
   const [showPublished,   setShowPublished]   = useState(false)
+  const [unvalidateToast, setUnvalidateToast] = useState(null)
   const skipSharePoint = useRef(false)
 
   useEffect(() => {
@@ -107,6 +108,19 @@ export default function Preview() {
           setShowPublished(true)
         }
       } else {
+        // Retrait de validation : supprimer le fichier SharePoint si existant
+        if (slide.sharepoint_url) {
+          try {
+            await deleteSlideFromSharePoint(slide)
+            await supabase.from('slides').update({ sharepoint_url: null }).eq('id', id)
+            setSlide(prev => ({ ...prev, sharepoint_url: null }))
+            setUnvalidateToast({ ok: true, msg: 'Slide retirée et fichier supprimé de SharePoint.' })
+          } catch (e) {
+            console.error('SharePoint delete:', e)
+            setUnvalidateToast({ ok: false, msg: 'Slide retirée. Échec de la suppression SharePoint.' })
+          }
+          setTimeout(() => setUnvalidateToast(null), 4000)
+        }
         setConfirmValidate(false)
       }
     } else {
@@ -716,6 +730,17 @@ export default function Preview() {
         </main>
       </div>
 
+      {/* ── Toast retrait validation ── */}
+      {unvalidateToast && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: unvalidateToast.ok ? '#0E2A6B' : '#dc2626', color: '#fff', padding: '12px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.2)', zIndex: 3000, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+          {unvalidateToast.ok
+            ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l4 4 6-6"/></svg>
+            : <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 5v4M8 11v1"/><circle cx="8" cy="8" r="6"/></svg>
+          }
+          {unvalidateToast.msg}
+        </div>
+      )}
+
       {/* ── Modale confirmation validation ── */}
       {confirmValidate && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
@@ -726,7 +751,7 @@ export default function Preview() {
             </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
               {validated
-                ? <><strong>« {slideTitle} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
+                ? <><strong>« {slideTitle} »</strong> repassera en <strong style={{ color: '#64748b' }}>Brouillon</strong> et ne sera plus marquée comme prête.{slide.sharepoint_url && <> <strong>Le fichier sera également supprimé du dossier SharePoint.</strong></>}</>
                 : <><strong>« {slideTitle} »</strong> sera marquée comme <strong style={{ color: '#16a34a' }}>Ready</strong> et <strong>publiée automatiquement sur SharePoint</strong> dans le dossier des références WeFiiT.</>
               }
             </div>
