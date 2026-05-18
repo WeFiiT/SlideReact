@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title></title>
+<head><title></title></head>
+<body>
   <script src="/msal-redirect-bridge.min.js"></script>
-</head>
-<body></body>
+  <script>
+    window.msalRedirectBridge.broadcastResponseToMainFrame().catch(function() {});
+  </script>
+</body>
 </html>

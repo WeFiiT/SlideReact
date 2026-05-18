@@ -77,6 +77,8 @@ export async function uploadSlideToSharePoint(slide, token = null) {
 
   const encodedPath = [...SP_FOLDER.split('/'), filename].map(encodeURIComponent).join('/')
   const url = `https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_SITE}:/drive/root:/${encodedPath}:/content`
+  console.log('[SharePoint] Upload URL:', url)
+  console.log('[SharePoint] Token (10 premiers chars):', token?.slice(0, 10))
 
   const res = await fetch(url, {
     method:  'PUT',
@@ -89,6 +91,7 @@ export async function uploadSlideToSharePoint(slide, token = null) {
 
   if (!res.ok) {
     const detail = await res.text()
+    console.error('[SharePoint] Erreur upload:', res.status, detail)
     throw new Error(`Upload SharePoint échoué (${res.status}): ${detail}`)
   }
 
