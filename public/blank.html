@@ -52,28 +52,49 @@
       color: #6E7385;
       line-height: 1.5;
     }
+    .close-btn {
+      display: none;
+      margin-top: 20px;
+      background: #0E2A6B;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="logo">WeMission</div>
-    <div class="spinner"></div>
-    <div class="label">Publication SharePoint en cours…</div>
-    <div class="sub">Connexion à Microsoft en cours.<br>Cette fenêtre se fermera automatiquement.</div>
+    <div class="spinner" id="spinner"></div>
+    <div class="label" id="label">Publication SharePoint en cours…</div>
+    <div class="sub" id="sub">Connexion à Microsoft en cours.<br>Cette fenêtre se fermera automatiquement.</div>
+    <button class="close-btn" id="close-btn" onclick="window.close()">Fermer cette fenêtre</button>
   </div>
-  <script src="/msal-browser.min.js"></script>
+  <script src="/msal-redirect-bridge.min.js"></script>
   <script>
-    var msalInstance = new window.msal.PublicClientApplication({
-      auth: {
-        clientId: '44ce1d99-69ec-403a-a6c1-feda78c0cbc7',
-        authority: 'https://login.microsoftonline.com/28dd0381-5845-4bf6-9beb-60cf464a2f0d',
-        redirectUri: window.location.origin + '/blank.html',
-      },
-      cache: { cacheLocation: 'sessionStorage' },
-    });
-    msalInstance.initialize().then(function() {
-      return msalInstance.handleRedirectPromise();
-    }).catch(function(e) { console.error('MSAL blank:', e); });
+    function showFallback() {
+      if (window.closed) return;
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('label').textContent = 'Authentification réussie.';
+      document.getElementById('sub').textContent = 'Vous pouvez fermer cette fenêtre et reprendre votre validation.';
+      document.getElementById('close-btn').style.display = 'inline-block';
+    }
+
+    window.msalRedirectBridge.broadcastResponseToMainFrame()
+      .then(function() {
+        // Le bridge a diffusé la réponse et appelé window.close()
+        // Fallback si la fermeture auto n'a pas fonctionné
+        setTimeout(showFallback, 1500);
+      })
+      .catch(function(e) {
+        console.error('MSAL bridge:', e);
+        showFallback();
+      });
   </script>
 </body>
 </html>
