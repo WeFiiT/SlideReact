@@ -43,7 +43,7 @@ export default function ClientSelector({ client, segmentation, onChange }) {
   }, [])
 
   const handleSelect = (name) => {
-    if (!name) return
+    if (!name || name === client) return
     const found = clients.find(c => c.name === name)
     onChange({ client: name, segmentation: found?.segmentation || '', logo_url: found?.logo_url || '' })
   }
@@ -92,6 +92,10 @@ export default function ClientSelector({ client, segmentation, onChange }) {
             }}
           >
             <option value="">{loading ? 'Chargement…' : '— Sélectionner un client —'}</option>
+            {/* Fallback si le client actuel n'est pas dans la liste Notion */}
+            {client && !loading && !clients.some(c => c.name === client) && (
+              <option value={client}>{client}</option>
+            )}
             {clients.map(c => (
               <option key={c.id} value={c.name}>{c.name}</option>
             ))}
