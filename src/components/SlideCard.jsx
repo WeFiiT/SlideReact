@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
 import { normalizeName } from '../constants'
 import { getUser } from '../pages/Login'
+import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
 
 const THUMB_W  = 140
 const THUMB_H  = Math.round(THUMB_W * 9 / 16)   // 79px
@@ -62,11 +63,14 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
 
   const [hover,           setHover]           = useState(false)
   const [showMenu,        setShowMenu]        = useState(false)
+  const [showExportMenu,  setShowExportMenu]  = useState(false)
+  const [exporting,       setExporting]       = useState(false)
   const [confirmDelete,   setConfirmDelete]   = useState(false)
   const [deleting,        setDeleting]        = useState(false)
   const [confirmValidate, setConfirmValidate] = useState(false)
   const [validating,      setValidating]      = useState(false)
   const [validated,       setValidated]       = useState(!!slide.validated)
+  const exportMenuRef = useRef(null)
 
   const isOwner = user &&
     normalizeName(slide.prenom) === user.prenomNorm &&
@@ -81,6 +85,27 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [showMenu])
+
+  useEffect(() => {
+    if (!showExportMenu) return
+    const h = (e) => { if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) setShowExportMenu(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [showExportMenu])
+
+  const handleExport = async (e, fmt) => {
+    e.stopPropagation()
+    setShowExportMenu(false)
+    if (fmt === 'pptx') {
+      setExporting(true)
+      try {
+        const pptx = await buildNativePptx([slide])
+        await pptx.writeFile({ fileName: `${buildPptxFilename(slide)}.pptx` })
+      } finally { setExporting(false) }
+    } else {
+      navigate(`/preview/${slide.id}?export=${fmt}`)
+    }
+  }
 
   const handleValidate = async () => {
     setValidating(true)
@@ -235,13 +260,32 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
             {/* CTAs bas à droite */}
             {!selectMode ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/preview/${slide.id}?export=1`) }}
-                  style={iconBtnStyle}
-                  title={`Exporter ${slide.card_titre || slide.titre || ''}`}
-                >
-                  <IconExport />
-                </button>
+                <div ref={exportMenuRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (!exporting) setShowExportMenu(v => !v) }}
+                    style={{ ...iconBtnStyle, background: showExportMenu ? '#f1f5f9' : '#fff', opacity: exporting ? 0.5 : 1 }}
+                    title="Exporter"
+                  >
+                    <IconExport />
+                  </button>
+                  {showExportMenu && (
+                    <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', right: 0, background: '#fff', borderRadius: 8, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07), 0 12px 28px rgba(0,0,0,0.12)', border: '1px solid #E8E6E1', minWidth: 150, zIndex: 200 }}>
+                      {[
+                        { fmt: 'png',  label: 'Exporter en PNG'  },
+                        { fmt: 'pdf',  label: 'Exporter en PDF'  },
+                        { fmt: 'pptx', label: 'Exporter en PPTX' },
+                      ].map(({ fmt, label }) => (
+                        <button key={fmt} onClick={(e) => handleExport(e, fmt)}
+                          style={{ width: '100%', background: 'none', border: 'none', padding: '8px 12px', fontSize: 13, color: '#1A1E2C', fontWeight: 500, cursor: 'pointer', borderRadius: 6, textAlign: 'left', fontFamily: 'inherit' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#F3F1EC'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {isOwner && (
                   <button

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
-import { buildNativePptx } from '../utils/exportPptx'
+import { buildNativePptx, buildPptxFilename } from '../utils/exportPptx'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { getUser } from './Login'
@@ -38,7 +38,8 @@ export default function Preview() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const autoExportParam = searchParams.get('export') === '1'
+  const autoExportFmt   = searchParams.get('export')  // '1' | 'png' | 'pdf'
+  const autoExportParam = !!autoExportFmt
   const editParam       = searchParams.get('edit')   === '1'
   const autoExportDone  = useRef(false)
   const slideRef        = useRef(null)
@@ -91,7 +92,8 @@ export default function Preview() {
   useEffect(() => {
     if (!autoExportParam || loading || !slide || autoExportDone.current) return
     autoExportDone.current = true
-    exportPNG()
+    if (autoExportFmt === 'pdf') exportPDF()
+    else exportPNG()
   }, [autoExportParam, loading, slide])
 
   useEffect(() => {
@@ -224,8 +226,7 @@ export default function Preview() {
     setExporting(true)
     try {
       const pptx = await buildNativePptx([slide])
-      const filename = (slide?.card_titre || slide?.titre || 'slide').replace(/[/\\?%*:|"<>]/g, '-')
-      await pptx.writeFile({ fileName: `${filename}.pptx` })
+      await pptx.writeFile({ fileName: `${buildPptxFilename(slide)}.pptx` })
     } finally { setExporting(false) }
   }
 
