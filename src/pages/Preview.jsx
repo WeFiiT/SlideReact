@@ -74,7 +74,9 @@ export default function Preview() {
   const [showPublished,   setShowPublished]   = useState(false)
   const [unvalidateToast, setUnvalidateToast] = useState(null)
   const [spStep,          setSpStep]          = useState(null)
-  const skipSharePoint = useRef(false)
+  const skipSharePoint  = useRef(false)
+  const isRemovingRef   = useRef(false)
+  const supabaseUpdated = useRef(false)
 
   useEffect(() => {
     supabase.from('slides').select('*').eq('id', id).single()
@@ -87,7 +89,9 @@ export default function Preview() {
 
   const handleValidate = async () => {
     setValidating(true)
-    skipSharePoint.current = false
+    skipSharePoint.current  = false
+    supabaseUpdated.current = false
+    isRemovingRef.current   = validated
     const next = !validated
 
     // Acquérir le token immédiatement (contexte clic) pour éviter le blocage popup navigateur
@@ -100,8 +104,12 @@ export default function Preview() {
     }
     setSpStep(null)
 
+    // Si l'utilisateur a cliqué "skip" pendant la connexion, le skip handler gère tout
+    if (skipSharePoint.current) return
+
     const { error } = await supabase.from('slides').update({ validated: next }).eq('id', id)
     if (!error) {
+      supabaseUpdated.current = true
       setValidated(next)
       setSlide(prev => ({ ...prev, validated: next }))
       if (next) {
@@ -122,7 +130,7 @@ export default function Preview() {
           setShowPublished(true)
         }
       } else {
-        if (slide.sharepoint_url) {
+        if (slide.sharepoint_url && !skipSharePoint.current) {
           try {
             setSpStep('deleting')
             await deleteSlideFromSharePoint(slide, spToken)
@@ -136,7 +144,7 @@ export default function Preview() {
           setSpStep(null)
           setTimeout(() => setUnvalidateToast(null), 4000)
         }
-        setConfirmValidate(false)
+        if (!skipSharePoint.current) setConfirmValidate(false)
       }
     } else {
       alert('Erreur lors de la mise à jour.')
@@ -149,8 +157,23 @@ export default function Preview() {
     skipSharePoint.current = true
     setValidating(false)
     setConfirmValidate(false)
-    setPublishedUrl(null)
-    setShowPublished(true)
+    if (isRemovingRef.current) {
+      if (!supabaseUpdated.current) {
+        setValidated(false)
+        setSlide(prev => ({ ...prev, validated: false }))
+        supabase.from('slides').update({ validated: false }).eq('id', id)
+      }
+      setUnvalidateToast({ ok: true, msg: 'Slide retirée. Fichier SharePoint non supprimé.' })
+      setTimeout(() => setUnvalidateToast(null), 4000)
+    } else {
+      if (!supabaseUpdated.current) {
+        setValidated(true)
+        setSlide(prev => ({ ...prev, validated: true }))
+        supabase.from('slides').update({ validated: true }).eq('id', id)
+      }
+      setPublishedUrl(null)
+      setShowPublished(true)
+    }
   }
 
   useEffect(() => {
@@ -783,7 +806,7 @@ export default function Preview() {
               <button
                 onClick={validating ? handleSkipSharePoint : () => setConfirmValidate(false)}
                 style={{ flex: 1, background: '#f1f5f9', color: validating ? '#92521A' : '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {validating ? 'Valider sans SharePoint' : 'Annuler'}
+                {validating ? (isRemovingRef.current ? 'Retirer sans SharePoint' : 'Valider sans SharePoint') : 'Annuler'}
               </button>
             </div>
           </div>

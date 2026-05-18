@@ -59,8 +59,10 @@ const primaryBtnStyle = {
 export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, selectMode = false, selected = false, onSelect }) {
   const navigate = useNavigate()
   const menuRef        = useRef(null)
-  const skipSharePoint = useRef(false)
-  const user           = getUser()
+  const skipSharePoint  = useRef(false)
+  const isRemovingRef   = useRef(false)
+  const supabaseUpdated = useRef(false)
+  const user            = getUser()
   const isFav    = user && (slide.favorited_by || []).includes(user.email)
 
   const [hover,           setHover]           = useState(false)
@@ -116,7 +118,9 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
 
   const handleValidate = async () => {
     setValidating(true)
-    skipSharePoint.current = false
+    skipSharePoint.current  = false
+    supabaseUpdated.current = false
+    isRemovingRef.current   = validated
     const next = !validated
 
     // Acquérir le token immédiatement (contexte clic) pour éviter le blocage popup navigateur
@@ -129,8 +133,12 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     }
     setSpStep(null)
 
+    // Si l'utilisateur a cliqué "skip" pendant la connexion, le skip handler gère tout
+    if (skipSharePoint.current) return
+
     const { error } = await supabase.from('slides').update({ validated: next }).eq('id', slide.id)
     if (!error) {
+      supabaseUpdated.current = true
       setValidated(next)
       onValidated?.(slide.id, next)
       if (next) {
@@ -151,7 +159,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
           setShowPublished(true)
         }
       } else {
-        if (spUrl) {
+        if (spUrl && !skipSharePoint.current) {
           try {
             setSpStep('deleting')
             await deleteSlideFromSharePoint(slide, spToken)
@@ -165,7 +173,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
           setSpStep(null)
           setTimeout(() => setUnvalidateToast(null), 4000)
         }
-        setConfirmValidate(false)
+        if (!skipSharePoint.current) setConfirmValidate(false)
       }
     } else {
       alert('Erreur lors de la mise à jour.')
@@ -178,8 +186,23 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     skipSharePoint.current = true
     setValidating(false)
     setConfirmValidate(false)
-    setPublishedUrl(null)
-    setShowPublished(true)
+    if (isRemovingRef.current) {
+      if (!supabaseUpdated.current) {
+        setValidated(false)
+        supabase.from('slides').update({ validated: false }).eq('id', slide.id)
+        onValidated?.(slide.id, false)
+      }
+      setUnvalidateToast({ ok: true, msg: 'Slide retirée. Fichier SharePoint non supprimé.' })
+      setTimeout(() => setUnvalidateToast(null), 4000)
+    } else {
+      if (!supabaseUpdated.current) {
+        setValidated(true)
+        supabase.from('slides').update({ validated: true }).eq('id', slide.id)
+        onValidated?.(slide.id, true)
+      }
+      setPublishedUrl(null)
+      setShowPublished(true)
+    }
   }
 
   const handleDelete = async () => {
@@ -455,7 +478,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
               <button
                 onClick={validating ? handleSkipSharePoint : () => setConfirmValidate(false)}
                 style={{ flex: 1, background: '#f1f5f9', color: validating ? '#92521A' : '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {validating ? 'Valider sans SharePoint' : 'Annuler'}
+                {validating ? (isRemovingRef.current ? 'Retirer sans SharePoint' : 'Valider sans SharePoint') : 'Annuler'}
               </button>
             </div>
           </div>
