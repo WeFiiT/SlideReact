@@ -54,7 +54,7 @@ export default function Share() {
         <span style={{ fontSize: 15, fontWeight: 700, color: '#0E2A6B' }}>WeFiiT</span>
         <div style={{ width: 1, height: 18, background: '#E8E6E1' }} />
         <span style={{ fontSize: 13, color: '#6E7385', fontWeight: 500 }}>
-          {slide.card_titre || slide.titre || 'Slide partagée'}
+          {slide.card_titre || slide.titre || 'Référence partagée'}
         </span>
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 11, background: '#F3F1EC', color: '#6E7385', padding: '4px 10px', borderRadius: 999, fontWeight: 600, letterSpacing: 0.3 }}>

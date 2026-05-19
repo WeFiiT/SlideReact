@@ -169,7 +169,7 @@ export default function Editeur() {
   const validate = () => {
     const errs = {}
     if (!form.card_titre.trim()) errs.card_titre = 'Le titre de la carte est obligatoire'
-    if (!form.titre.trim())      errs.titre      = 'Le titre de la slide est obligatoire'
+    if (!form.titre.trim())      errs.titre      = 'Le titre de la référence est obligatoire'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -250,7 +250,7 @@ export default function Editeur() {
     </div>
   )
 
-  const slideTitle = form.card_titre || form.titre || (isEditing ? 'Modifier la slide' : 'Nouvelle slide')
+  const slideTitle = form.card_titre || form.titre || (isEditing ? 'Modifier la référence' : 'Nouvelle référence')
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif', color: '#1A1E2C', background: '#fff' }}>
@@ -291,12 +291,12 @@ export default function Editeur() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: '#1A1E2C', marginBottom: 8 }}>
-              {form.validated ? 'Retirer la validation ?' : 'Valider cette slide ?'}
+              {form.validated ? 'Retirer la validation ?' : 'Valider cette référence ?'}
             </div>
             <div style={{ fontSize: 13, color: '#6E7385', marginBottom: 24, lineHeight: 1.6 }}>
               {form.validated
-                ? <>La slide <strong>« {form.card_titre || form.titre || 'Sans titre'} »</strong> repassera en <strong style={{ color: '#6E7385' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
-                : <>La slide <strong>« {form.card_titre || form.titre || 'Sans titre'} »</strong> sera marquée comme <strong style={{ color: '#3EAE6E' }}>Ready</strong> et disponible pour un envoi potentiel à des clients.</>
+                ? <>La référence <strong>« {form.card_titre || form.titre || 'Sans titre'} »</strong> repassera en <strong style={{ color: '#6E7385' }}>Brouillon</strong> et ne sera plus marquée comme prête.</>
+                : <>La référence <strong>« {form.card_titre || form.titre || 'Sans titre'} »</strong> sera marquée comme <strong style={{ color: '#3EAE6E' }}>Ready</strong> et disponible pour un envoi potentiel à des clients.</>
               }
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -324,7 +324,7 @@ export default function Editeur() {
                 <rect x="2.5" y="4" width="15" height="11" rx="1.5"/>
                 <path d="M2.5 7h15"/>
               </svg>
-              <span style={styles.railLabel}>Slide</span>
+              <span style={styles.railLabel}>Référence</span>
             </button>
           ) : (
             <button style={{ ...styles.railItem(false), opacity: 0.4, cursor: 'not-allowed' }} disabled>
@@ -332,7 +332,7 @@ export default function Editeur() {
                 <rect x="2.5" y="4" width="15" height="11" rx="1.5"/>
                 <path d="M2.5 7h15"/>
               </svg>
-              <span style={styles.railLabel}>Slide</span>
+              <span style={styles.railLabel}>Référence</span>
             </button>
           )}
 
@@ -373,27 +373,27 @@ export default function Editeur() {
                   <path d="M7 9V6a3 3 0 0 1 6 0v3"/>
                 </svg>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#92521A', marginBottom: 2 }}>Slide verrouillée — statut Ready</div>
-                  <div style={{ fontSize: 12, color: '#B06820', lineHeight: 1.5 }}>Cette slide est validée et ne peut plus être modifiée. Pour la rééditer, retirez d'abord la validation depuis la vue Slide.</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#92521A', marginBottom: 2 }}>Référence verrouillée — statut Ready</div>
+                  <div style={{ fontSize: 12, color: '#B06820', lineHeight: 1.5 }}>Cette référence est validée et ne peut plus être modifiée. Pour la rééditer, retirez d'abord la validation depuis la vue Référence.</div>
                 </div>
                 <button onClick={() => navigate(`/preview/${id}`)}
                   style={{ background: '#E97433', color: '#fff', border: 'none', borderRadius: 7, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  Aller à la slide →
+                  Aller à la référence →
                 </button>
               </div>
             )}
 
             <h1 style={{ margin: '0 0 8px', color: '#0E2A6B', fontSize: 22, fontWeight: 800, fontFamily: "'Publica Play', Arial, sans-serif" }}>
-              {isEditing ? 'Modifier la slide' : 'Nouvelle slide'}
+              {isEditing ? 'Modifier la référence' : 'Nouvelle référence'}
             </h1>
             <p style={{ margin: '0 0 36px', color: '#6E7385', fontSize: 13 }}>
-              Remplis les sections ci-dessous — chaque champ correspond à une zone de la slide.
+              Remplis les sections ci-dessous — chaque champ correspond à une zone de la référence.
             </p>
 
             <div style={{ pointerEvents: isLocked ? 'none' : 'auto', opacity: isLocked ? 0.55 : 1, transition: 'opacity .2s' }}>
 
             {/* ── Carte bibliothèque ── */}
-            <Card icon="🗂️" color="#475569" title="Carte bibliothèque" desc="Métadonnées affichées dans la bibliothèque — pas sur la slide">
+            <Card icon="🗂️" color="#475569" title="Carte bibliothèque" desc="Métadonnées affichées dans la bibliothèque — pas sur la référence">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', marginBottom: 12 }}>
                 <Field label="Prénom du consultant" value={form.prenom}
                   onChange={v => set('prenom', v)} placeholder="Ex : Marie" />
@@ -578,7 +578,7 @@ export default function Editeur() {
                 style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, borderLeft: '4px solid #6E7385', background: '#fafafa', borderBottom: slideOpen ? '1px solid #f1f5f9' : 'none', fontFamily: 'inherit' }}>
                 <span style={{ fontSize: 16 }}>📝</span>
                 <div style={{ flex: 1, textAlign: 'left' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1E2C' }}>Contenu de la slide</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1E2C' }}>Contenu de la référence</div>
                   <div style={{ fontSize: 12, color: '#6E7385', marginTop: 1 }}>En-tête, contexte, tags, périmètre, enjeux, impact, métriques</div>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#6E7385" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
@@ -590,8 +590,8 @@ export default function Editeur() {
                 <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
 
             {/* ── En-tête ── */}
-            <Card icon="◼" color="#0E2A6B" title="En-tête" desc="Bandeau bleu supérieur de la slide">
-              <Field label="Titre de la slide" value={form.titre} onChange={(v) => set('titre', v)} placeholder="Ex : Transformation digitale RH"
+            <Card icon="◼" color="#0E2A6B" title="En-tête" desc="Bandeau bleu supérieur de la référence">
+              <Field label="Titre de la référence" value={form.titre} onChange={(v) => set('titre', v)} placeholder="Ex : Transformation digitale RH"
                 error={errors.titre} />
               <Field label="Sous-titre" value={form.sous_titre} onChange={(v) => set('sous_titre', v)} placeholder="Ex : Périmètre fonctionnel : PM sur l'app web…" />
             </Card>
@@ -656,7 +656,7 @@ export default function Editeur() {
             </div>
 
             {/* ── Logo client ── */}
-            <Card icon="🖼️" color="#94a3b8" title="Logo client" desc="Zone en haut à droite de la slide">
+            <Card icon="🖼️" color="#94a3b8" title="Logo client" desc="Zone en haut à droite de la référence">
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                 {form.logo_url && (
                   <div style={{ flexShrink: 0, width: 100, height: 60, border: '1px solid #e2e8f0', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', overflow: 'hidden' }}>

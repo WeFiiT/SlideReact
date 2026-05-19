@@ -707,7 +707,7 @@ export default function Bibliotheque() {
           <SectionHeader title="Autres missions" count={othersFilteredSlides.length} />
           {othersFilteredSlides.length === 0 ? (
             <p style={{ color: '#94a3b8', fontSize: 13 }}>
-              {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune autre slide.'}
+              {hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucune autre référence.'}
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -826,10 +826,10 @@ export default function Bibliotheque() {
           <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ fontSize: 20, marginBottom: 10 }}>🗑️</div>
             <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 6 }}>
-              Supprimer {selectedIds.length} slide{selectedIds.length > 1 ? 's' : ''} ?
+              Supprimer {selectedIds.length} référence{selectedIds.length > 1 ? 's' : ''} ?
             </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.5 }}>
-              Cette action est irréversible. Les {selectedIds.length} slides sélectionnées seront supprimées définitivement.
+              Cette action est irréversible. Les {selectedIds.length} références sélectionnées seront supprimées définitivement.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={handleBulkDelete} disabled={bulkDeleting}
@@ -856,7 +856,7 @@ export default function Bibliotheque() {
             {/* Header + indicateur étape */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <h2 style={{ margin: 0, color: '#002882', fontSize: 20, fontWeight: 800, fontFamily: "'Publica Play', Arial, sans-serif" }}>
-                Nouvelle slide
+                Nouvelle référence
               </h2>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8' }}>{modalStep} / 2</span>
             </div>

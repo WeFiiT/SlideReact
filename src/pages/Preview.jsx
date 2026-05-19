@@ -107,7 +107,7 @@ export default function Preview() {
         console.error('Token SharePoint:', e)
         setValidated(false)
         setSlide(prev => ({ ...prev, validated: false }))
-        setUnvalidateToast({ ok: false, msg: 'Connexion SharePoint impossible. La slide ne peut pas être validée.' })
+        setUnvalidateToast({ ok: false, msg: 'Connexion SharePoint impossible. La référence ne peut pas être validée.' })
         setTimeout(() => setUnvalidateToast(null), 5000)
         setConfirmValidate(false)
         setSpStep(null)
@@ -139,7 +139,7 @@ export default function Preview() {
             await supabase.from('slides').update({ validated: false }).eq('id', id)
             setValidated(false)
             setSlide(prev => ({ ...prev, validated: false }))
-            setUnvalidateToast({ ok: false, msg: 'Échec publication SharePoint. La slide n\'a pas été validée.' })
+            setUnvalidateToast({ ok: false, msg: 'Échec publication SharePoint. La référence n\'a pas été validée.' })
             setTimeout(() => setUnvalidateToast(null), 6000)
             setConfirmValidate(false)
           }
@@ -187,7 +187,7 @@ export default function Preview() {
             await deleteSlideFromSharePoint(slide, spToken)
             await supabase.from('slides').update({ sharepoint_url: null }).eq('id', id)
             setSlide(prev => ({ ...prev, sharepoint_url: null }))
-            setUnvalidateToast({ ok: true, msg: 'Slide retirée et supprimée de SharePoint.' })
+            setUnvalidateToast({ ok: true, msg: 'Référence retirée et supprimée de SharePoint.' })
             setTimeout(() => setUnvalidateToast(null), 4000)
           } catch (e) {
             console.error('SharePoint delete:', e)
@@ -202,7 +202,7 @@ export default function Preview() {
           }
           setSpStep(null)
         } else {
-          setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
+          setUnvalidateToast({ ok: true, msg: 'Référence repassée en Brouillon.' })
           setTimeout(() => setUnvalidateToast(null), 3000)
         }
       } else {
@@ -547,7 +547,7 @@ export default function Preview() {
       </div>
     </div>
   )
-  if (!slide)  return <p style={{ padding: 32, color: '#dc2626' }}>Slide introuvable.</p>
+  if (!slide)  return <p style={{ padding: 32, color: '#dc2626' }}>Référence introuvable.</p>
 
   const slideTitle = slide.card_titre || slide.titre || 'Sans titre'
   const savedLabel = lastSaved ? relativeTime(lastSaved) : null
@@ -704,7 +704,7 @@ export default function Preview() {
             </button>
             {validateTip && (
               <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 220, background: '#1e293b', borderRadius: 10, padding: '12px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.22)', zIndex: 300, pointerEvents: 'none' }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: '#f97316', marginBottom: 6 }}>Slide incomplète</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#f97316', marginBottom: 6 }}>Référence incomplète</div>
                 <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>2/3 champs min. par catégorie :</div>
                 {missing.map(m => (
                   <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>

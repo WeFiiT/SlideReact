@@ -155,7 +155,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
         // Connexion impossible : validation bloquée
         setValidated(false)
         onValidated?.(slide.id, false)
-        setUnvalidateToast({ ok: false, msg: 'Connexion SharePoint impossible. La slide ne peut pas être validée.' })
+        setUnvalidateToast({ ok: false, msg: 'Connexion SharePoint impossible. La référence ne peut pas être validée.' })
         setTimeout(() => setUnvalidateToast(null), 5000)
         setConfirmValidate(false)
         setSpStep(null)
@@ -188,7 +188,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
             await supabase.from('slides').update({ validated: false }).eq('id', slide.id)
             setValidated(false)
             onValidated?.(slide.id, false)
-            setUnvalidateToast({ ok: false, msg: 'Échec publication SharePoint. La slide n\'a pas été validée.' })
+            setUnvalidateToast({ ok: false, msg: 'Échec publication SharePoint. La référence n\'a pas été validée.' })
             setTimeout(() => setUnvalidateToast(null), 6000)
             setConfirmValidate(false)
           }
@@ -236,7 +236,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
             await deleteSlideFromSharePoint({ ...slide }, spToken)
             await supabase.from('slides').update({ sharepoint_url: null }).eq('id', slide.id)
             setSpUrl(null)
-            setUnvalidateToast({ ok: true, msg: 'Slide retirée et supprimée de SharePoint.' })
+            setUnvalidateToast({ ok: true, msg: 'Référence retirée et supprimée de SharePoint.' })
             setTimeout(() => setUnvalidateToast(null), 4000)
           } catch (e) {
             console.error('SharePoint delete:', e)
@@ -251,7 +251,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
           }
           setSpStep(null)
         } else {
-          setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
+          setUnvalidateToast({ ok: true, msg: 'Référence repassée en Brouillon.' })
           setTimeout(() => setUnvalidateToast(null), 3000)
         }
       } else {
@@ -470,7 +470,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
                     </button>
                     {validateTip && (
                       <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 210, background: '#1e293b', borderRadius: 10, padding: '10px 12px', boxShadow: '0 8px 24px rgba(0,0,0,0.22)', zIndex: 300, pointerEvents: 'none' }}>
-                        <div style={{ fontWeight: 700, fontSize: 12, color: '#f97316', marginBottom: 5 }}>Slide incomplète</div>
+                        <div style={{ fontWeight: 700, fontSize: 12, color: '#f97316', marginBottom: 5 }}>Référence incomplète</div>
                         <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6 }}>2/3 champs min. par catégorie :</div>
                         {missing.map(m => (
                           <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
@@ -556,7 +556,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
           onClick={(e) => { if (e.target === e.currentTarget && !validating) setConfirmValidate(false) }}>
           <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 8 }}>
-              {validated ? 'Retirer la validation ?' : 'Valider cette slide ?'}
+              {validated ? 'Retirer la validation ?' : 'Valider cette référence ?'}
             </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
               {validated
@@ -628,7 +628,7 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
           onClick={(e) => { if (e.target === e.currentTarget && !deleting) setConfirmDelete(false) }}>
           <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 380, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ fontSize: 20, marginBottom: 10 }}>🗑️</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 6 }}>Supprimer cette slide ?</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 6 }}>Supprimer cette référence ?</div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.5 }}>
               « {slide.card_titre || slide.titre || 'Sans titre'} » sera supprimée définitivement.
             </div>
