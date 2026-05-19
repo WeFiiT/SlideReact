@@ -483,7 +483,7 @@ export default function Bibliotheque() {
         </div>
 
         <button
-          onClick={() => { logout(); navigate('/login') }}
+          onClick={async () => { await logout(); navigate('/login') }}
           title="Se déconnecter"
           style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #E8E6E1', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6E7385' }}
           onMouseEnter={e => { e.currentTarget.style.background = '#F3F1EC' }}

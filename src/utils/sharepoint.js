@@ -1,4 +1,5 @@
-import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser'
+import { InteractionRequiredAuthError } from '@azure/msal-browser'
+import { getMsal } from './msalClient'
 import { resolveLogoUrl } from './resolveLogoUrl'
 
 function buildPptxFilename(slide) {
@@ -36,22 +37,6 @@ async function getSiteId(token) {
   return cachedSiteId
 }
 
-// Singleton MSAL instance, initialized once
-let msalPromise = null
-function getMsal() {
-  if (!msalPromise) {
-    const instance = new PublicClientApplication({
-      auth: {
-        clientId:    CLIENT_ID,
-        authority:   `https://login.microsoftonline.com/${TENANT_ID}`,
-        redirectUri: window.location.origin + '/',
-      },
-      cache: { cacheLocation: 'sessionStorage' },
-    })
-    msalPromise = instance.initialize().then(() => instance)
-  }
-  return msalPromise
-}
 
 export async function getToken() {
   const msal     = await getMsal()

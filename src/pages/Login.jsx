@@ -1,25 +1,34 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getMsal } from '../utils/msalClient'
+import { normalizeName } from '../constants'
 
-function parseWefiiitEmail(email) {
-  // prenom : peut contenir des tirets (Pierre-Louis)
-  // nom    : sans espaces ni tirets (Le Blevenec → leblevenec, Lablache-Combier → lablachecombier)
-  const match = email.trim().toLowerCase().match(/^([a-z][a-z-]*)\.([a-z]+)@wefiit\.com$/)
-  if (!match) return null
+const LOGIN_SCOPES = ['User.Read']
 
-  // Capitalise chaque segment séparé par un tiret
-  const capitalizeHyphen = (s) =>
-    s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-')
+async function buildUser(account, accessToken) {
+  let prenom = '', nom = ''
+  try {
+    const res = await fetch('https://graph.microsoft.com/v1.0/me?$select=givenName,surname', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    const me = await res.json()
+    prenom = me.givenName || ''
+    nom    = me.surname   || ''
+  } catch { /* fallback below */ }
 
-  const prenomRaw = match[1]   // ex: "pierre-louis"
-  const nomRaw    = match[2]   // ex: "leblevenec" (déjà normalisé dans l'email)
+  // Fallback : découpe le display name
+  if (!prenom && !nom) {
+    const parts = (account.name || '').trim().split(/\s+/)
+    prenom = parts[0] || ''
+    nom    = parts.slice(1).join(' ') || ''
+  }
 
   return {
-    email:     email.trim().toLowerCase(),
-    prenom:    capitalizeHyphen(prenomRaw),            // "Pierre-Louis"
-    nom:       nomRaw.charAt(0).toUpperCase() + nomRaw.slice(1), // "Leblevenec"
-    prenomNorm: prenomRaw.replace(/-/g, ''),           // "pierrelouis"
-    nomNorm:   nomRaw,                                 // "leblevenec"
+    email:      account.username.toLowerCase(),
+    prenom,
+    nom,
+    prenomNorm: normalizeName(prenom),
+    nomNorm:    normalizeName(nom),
   }
 }
 
@@ -27,24 +36,47 @@ export function getUser() {
   try { return JSON.parse(localStorage.getItem('wf_user') || 'null') } catch { return null }
 }
 
-export function logout() {
+export async function logout() {
   localStorage.removeItem('wf_user')
+  try {
+    const msal     = await getMsal()
+    const accounts = msal.getAllAccounts()
+    if (accounts.length > 0) await msal.logoutPopup({ account: accounts[0] })
+  } catch { /* popup bloqué — session sessionStorage expire à la fermeture de l'onglet */ }
 }
 
 export default function Login() {
   const navigate = useNavigate()
-  const [email, setEmail]   = useState('')
-  const [error, setError]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState('')
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    const user = parseWefiiitEmail(email)
-    if (!user) {
-      setError('Adresse invalide. Format attendu : prenom.nom@wefiit.com')
-      return
+  // Si déjà connecté (wf_user présent) → rediriger directement
+  useEffect(() => {
+    if (getUser()) navigate('/', { replace: true })
+  }, [])
+
+  const handleLogin = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const msal   = await getMsal()
+      const result = await msal.loginPopup({ scopes: LOGIN_SCOPES })
+
+      if (!result.account.username.toLowerCase().endsWith('@wefiit.com')) {
+        setError('Utilise ton compte WeFiiT (@wefiit.com).')
+        setLoading(false)
+        return
+      }
+
+      const user = await buildUser(result.account, result.accessToken)
+      localStorage.setItem('wf_user', JSON.stringify(user))
+      navigate('/', { replace: true })
+    } catch (e) {
+      if (!e.message?.includes('user_cancelled') && !e.message?.includes('interaction_in_progress')) {
+        setError('Connexion échouée. Réessaie.')
+      }
+      setLoading(false)
     }
-    localStorage.setItem('wf_user', JSON.stringify(user))
-    navigate('/')
   }
 
   return (
@@ -61,40 +93,50 @@ export default function Login() {
         <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800, color: '#002882', fontFamily: "'Publica Play', Arial, sans-serif", textAlign: 'center' }}>
           Annuaire des missions
         </h1>
-        <p style={{ margin: '0 0 28px', fontSize: 14, color: '#64748b', textAlign: 'center' }}>
-          Connecte-toi pour accéder à toutes les missions WeFiiT et exporter tes références.
+        <p style={{ margin: '0 0 32px', fontSize: 14, color: '#64748b', textAlign: 'center' }}>
+          Connecte-toi avec ton compte WeFiiT pour accéder aux missions et exporter tes références.
         </p>
 
-        <form onSubmit={handleSubmit}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
-            Adresse e-mail
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => { setEmail(e.target.value); setError('') }}
-            placeholder="prenom.nom@wefiit.com"
-            autoFocus
-            style={{
-              width: '100%', height: 44, border: `1.5px solid ${error ? '#dc2626' : '#e2e8f0'}`,
-              borderRadius: 8, padding: '0 14px', fontSize: 14, boxSizing: 'border-box',
-              outline: 'none', fontFamily: 'inherit', marginBottom: error ? 8 : 20,
-              transition: 'border-color 0.15s',
-            }}
-            onFocus={e => { if (!error) e.target.style.borderColor = '#002882' }}
-            onBlur={e => { if (!error) e.target.style.borderColor = '#e2e8f0' }}
-          />
-          {error && (
-            <p style={{ margin: '0 0 16px', fontSize: 12, color: '#dc2626' }}>{error}</p>
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          style={{
+            width: '100%', height: 44, background: loading ? '#f8fafc' : '#fff',
+            border: '1.5px solid #d1d5db', borderRadius: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+            fontSize: 15, fontWeight: 600, color: '#1a1a1a', cursor: loading ? 'default' : 'pointer',
+            fontFamily: 'inherit', transition: 'border-color .15s, box-shadow .15s',
+            boxShadow: loading ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
+            opacity: loading ? 0.7 : 1,
+          }}
+          onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = '#0078d4'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,120,212,0.15)' } }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)' }}
+        >
+          {loading ? (
+            <span style={{ fontSize: 13, color: '#64748b' }}>Connexion en cours…</span>
+          ) : (
+            <>
+              <MicrosoftLogo />
+              Se connecter avec Microsoft
+            </>
           )}
-          <button type="submit" style={{
-            width: '100%', height: 44, background: '#f08a2a', color: '#fff', border: 'none',
-            borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-          }}>
-            Accéder à l'annuaire →
-          </button>
-        </form>
+        </button>
+
+        {error && (
+          <p style={{ margin: '14px 0 0', fontSize: 13, color: '#dc2626', textAlign: 'center' }}>{error}</p>
+        )}
       </div>
     </div>
+  )
+}
+
+function MicrosoftLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1"  y="1"  width="9" height="9" fill="#F25022"/>
+      <rect x="11" y="1"  width="9" height="9" fill="#7FBA00"/>
+      <rect x="1"  y="11" width="9" height="9" fill="#00A4EF"/>
+      <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+    </svg>
   )
 }
