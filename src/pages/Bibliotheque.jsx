@@ -14,7 +14,6 @@ const VIEWS = [
   { id: 'segment', label: 'Segment & Client',     field: 'segmentation'      },
   { id: 'niveau',  label: 'Niveau de discipline', field: 'niveau_discipline' },
   { id: 'produit', label: 'Type de produit',      field: 'type_produit'      },
-  { id: 'mission', label: 'Type de mission',      field: 'type_mission'      },
   { id: 'favoris', label: 'Favoris',              field: null                },
 ]
 
@@ -54,6 +53,9 @@ export default function Bibliotheque() {
   const [notifications,   setNotifications]   = useState([])
   const [notifOpen,       setNotifOpen]       = useState(false)
   const notifRef                              = useRef(null)
+  const scrollContainerRef                    = useRef(null)
+  const sectionsRef                           = useRef(null)
+  const [tocTop, setTocTop]                   = useState(200)
   const [batchExporting,  setBatchExporting]  = useState(false)
   const [batchProgress,   setBatchProgress]   = useState({ current: 0, total: 0 })
   const [batchFormatMenu, setBatchFormatMenu] = useState(false)
@@ -377,12 +379,13 @@ export default function Bibliotheque() {
 
   useEffect(() => {
     if (!showToc) { setActiveSection(null); return }
+    const root = scrollContainerRef.current
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries.find(e => e.isIntersecting)
         if (visible) setActiveSection(decodeURIComponent(visible.target.id.replace('toc-', '')))
       },
-      { threshold: 0.1, rootMargin: '-80px 0px -60% 0px' },
+      { root, threshold: 0.1, rootMargin: '-80px 0px -60% 0px' },
     )
     groupedSlides.forEach(({ label }) => {
       const el = document.getElementById(`toc-${encodeURIComponent(label)}`)
@@ -390,6 +393,13 @@ export default function Bibliotheque() {
     })
     return () => observer.disconnect()
   }, [showToc, groupedSlides])
+  useEffect(() => {
+    if (!sectionsRef.current) return
+    const scrollTop = scrollContainerRef.current?.scrollTop ?? 0
+    const rect = sectionsRef.current.getBoundingClientRect()
+    setTocTop(rect.top + scrollTop)
+  }, [activeView, loading])
+
   const activeDateLabel  = DATE_OPTIONS.find(o => o.value === dateFilter)?.label ?? 'Toutes les dates'
 
   const typeCounts = useMemo(() => {
@@ -486,7 +496,7 @@ export default function Bibliotheque() {
         </button>
       </div>
 
-    <div style={{ height: 'calc(100vh - 56px)', overflowY: 'auto' }}>
+    <div ref={scrollContainerRef} style={{ height: 'calc(100vh - 56px)', overflowY: 'auto' }}>
       <div style={{ maxWidth: 1020, margin: '0 auto', padding: '28px 32px 80px' }}>
 
       {/* ── Title + actions ── */}
@@ -608,8 +618,8 @@ export default function Bibliotheque() {
       </div>
 
       {/* ── Sections ── */}
-      <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start' }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div ref={sectionsRef}>
+      <div>
       {loading ? (
         <>
           <SectionHeader title="Mes missions" count={0} />
@@ -712,12 +722,14 @@ export default function Bibliotheque() {
         </>
       )}
 
-      </div>{/* end flex content */}
+      </div>
 
-      {/* ── TOC sticky ── */}
+      </div>
+
+      {/* ── TOC fixed overlay ── */}
       {showToc && (
-        <div style={{ width: 168, flexShrink: 0, position: 'sticky', top: 24, alignSelf: 'flex-start' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>Dans cette vue</p>
+        <div style={{ position: 'fixed', top: tocTop, right: 24, width: 168, zIndex: 100, background: '#fff', borderRadius: 10, border: '1px solid #E8E6E1', padding: '12px 8px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', maxHeight: `calc(100vh - ${tocTop + 16}px)`, overflowY: 'auto' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px', padding: '0 4px' }}>Dans cette vue</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {groupedSlides.map(({ label, count }) => {
               const isActive = activeSection === label
@@ -734,8 +746,6 @@ export default function Bibliotheque() {
           </div>
         </div>
       )}
-
-      </div>{/* end flex row */}
 
       {/* ── Barre de sélection flottante ── */}
       {selectMode && (

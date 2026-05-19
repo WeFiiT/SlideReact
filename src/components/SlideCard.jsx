@@ -214,8 +214,17 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
           spToken = await getToken()
         } catch (e) {
           console.error('Token SharePoint:', e)
+          setValidated(true)
+          onValidated?.(slide.id, true)
+          setUnvalidateToast({ ok: false, msg: 'Connexion SharePoint impossible. La validation n\'a pas été retirée.' })
+          setTimeout(() => setUnvalidateToast(null), 5000)
+          setConfirmValidate(false)
+          setSpStep(null)
+          setValidating(false)
+          return
         }
         setSpStep(null)
+        if (skipSharePoint.current) return
       }
 
       const { error } = await supabase.from('slides').update({ validated: false }).eq('id', slide.id)
@@ -228,24 +237,32 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
             await supabase.from('slides').update({ sharepoint_url: null }).eq('id', slide.id)
             setSpUrl(null)
             setUnvalidateToast({ ok: true, msg: 'Slide retirée et supprimée de SharePoint.' })
+            setTimeout(() => setUnvalidateToast(null), 4000)
           } catch (e) {
             console.error('SharePoint delete:', e)
-            setUnvalidateToast({ ok: false, msg: 'Slide retirée. Échec suppression SharePoint.' })
+            if (!skipSharePoint.current) {
+              await supabase.from('slides').update({ validated: true }).eq('id', slide.id)
+              setValidated(true)
+              onValidated?.(slide.id, true)
+              setUnvalidateToast({ ok: false, msg: 'Échec suppression SharePoint. La validation n\'a pas été retirée.' })
+              setTimeout(() => setUnvalidateToast(null), 6000)
+              setConfirmValidate(false)
+            }
           }
           setSpStep(null)
-          setTimeout(() => setUnvalidateToast(null), 4000)
         } else {
           setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
           setTimeout(() => setUnvalidateToast(null), 3000)
         }
       } else {
-        // Revert optimiste
         setValidated(true)
         onValidated?.(slide.id, true)
         alert('Erreur lors de la mise à jour.')
       }
-      setConfirmValidate(false)
-      setValidating(false)
+      if (!skipSharePoint.current) {
+        setConfirmValidate(false)
+        setValidating(false)
+      }
     }
   }
 
@@ -254,16 +271,19 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
     setValidating(false)
     setConfirmValidate(false)
     setSpStep(null)
+    // Dans les deux sens, annuler reverte tout
     if (isRemovingRef.current) {
-      setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
-      setTimeout(() => setUnvalidateToast(null), 3000)
-      return
-    }
-    // Validation annulée : on reverte
-    setValidated(false)
-    onValidated?.(slide.id, false)
-    if (supabaseUpdated.current) {
-      supabase.from('slides').update({ validated: false }).eq('id', slide.id)
+      setValidated(true)
+      onValidated?.(slide.id, true)
+      if (supabaseUpdated.current) {
+        supabase.from('slides').update({ validated: true }).eq('id', slide.id)
+      }
+    } else {
+      setValidated(false)
+      onValidated?.(slide.id, false)
+      if (supabaseUpdated.current) {
+        supabase.from('slides').update({ validated: false }).eq('id', slide.id)
+      }
     }
   }
 
