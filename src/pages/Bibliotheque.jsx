@@ -4,8 +4,9 @@ import { createRoot } from 'react-dom/client'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
-import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, MANAGEMENT_OPTIONS, SUJETS_MISSION, OUTILS, computeStatus, normalizeName } from '../constants'
+import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, MANAGEMENT_OPTIONS, TYPE_PRODUIT, SUJETS_MISSION, OUTILS, computeStatus, normalizeName } from '../constants'
 import ClientSelector from '../components/ClientSelector'
+import CollapsibleChips from '../components/CollapsibleChips'
 import { getUser, logout } from './Login'
 
 const VIEWS = [
@@ -33,9 +34,10 @@ export default function Bibliotheque() {
   const [showModal, setShowModal]     = useState(false)
   const [modalStep, setModalStep]     = useState(1)
   const [creating, setCreating]       = useState(false)
+  const [newProduit, setNewProduit]   = useState('')
   const [newSujet, setNewSujet]       = useState('')
   const [newOutil, setNewOutil]       = useState('')
-  const emptyDraft = () => ({ prenom: user?.prenom || '', nom: user?.nom || '', titre: '', type_mission: '', client: '', segmentation: '', logo_url: '', discipline: '', niveau_discipline: '', management: '', sujets_mission: [], outils: [] })
+  const emptyDraft = () => ({ prenom: user?.prenom || '', nom: user?.nom || '', titre: '', type_mission: '', client: '', segmentation: '', logo_url: '', discipline: '', niveau_discipline: '', management: '', type_produit: [], sujets_mission: [], outils: [] })
   const [draft, setDraft]         = useState(emptyDraft)
 
   /* Filtres */
@@ -283,7 +285,7 @@ export default function Bibliotheque() {
     const seen = [...seenSet]
 
     const knownOrder = {
-      niveau_discipline: ['Junior', 'Confirmé', 'Senior', 'Lead'],
+      niveau_discipline: NIVEAUX,
       type_mission:      TYPES,
       discipline:        DISCIPLINES,
     }
@@ -341,8 +343,9 @@ export default function Bibliotheque() {
         discipline:        draft.discipline || null,
         niveau_discipline: draft.niveau_discipline || null,
         management:        draft.management || null,
-        sujets_mission:    draft.sujets_mission.length ? draft.sujets_mission : null,
-        outils:            draft.outils.length ? draft.outils : null,
+        type_produit:      draft.type_produit.filter(t => TYPE_PRODUIT.includes(t)).length ? draft.type_produit.filter(t => TYPE_PRODUIT.includes(t)) : null,
+        sujets_mission:    draft.sujets_mission.filter(s => SUJETS_MISSION.includes(s)).length ? draft.sujets_mission.filter(s => SUJETS_MISSION.includes(s)) : null,
+        outils:            draft.outils.filter(o => OUTILS.includes(o)).length ? draft.outils.filter(o => OUTILS.includes(o)) : null,
         logo_url:          draft.logo_url || null,
         owner_email:       user?.email || null,
       })
@@ -961,20 +964,49 @@ export default function Bibliotheque() {
                   </div>
                 </div>
 
+                {/* Type de produit */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Type de produit</label>
+                  <CollapsibleChips
+                    options={TYPE_PRODUIT}
+                    selected={draft.type_produit}
+                    onToggle={t => setDraft(p => ({ ...p, type_produit: p.type_produit.includes(t) ? p.type_produit.filter(x => x !== t) : [...p.type_produit, t] }))}
+                  />
+                  {draft.type_produit.filter(t => !TYPE_PRODUIT.includes(t)).map(t => (
+                    <button key={t} onClick={() => setDraft(p => ({ ...p, type_produit: p.type_produit.filter(x => x !== t) }))}
+                      style={{ marginTop: 4, background: '#0E2A6B', color: '#fff', border: '2px solid #0E2A6B', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {t} ✕
+                    </button>
+                  ))}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <input value={newProduit} onChange={e => setNewProduit(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && newProduit.trim() && !draft.type_produit.includes(newProduit.trim())) { setDraft(p => ({ ...p, type_produit: [...p.type_produit, newProduit.trim()] })); setNewProduit('') }}}
+                      placeholder="Autre…"
+                      style={{ ...modalInput, flex: 1, height: 32, padding: '0 10px', fontSize: 12 }}
+                      onFocus={e => e.target.style.borderColor = '#002882'}
+                      onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                    />
+                    <button onClick={() => { if (newProduit.trim() && !draft.type_produit.includes(newProduit.trim())) { setDraft(p => ({ ...p, type_produit: [...p.type_produit, newProduit.trim()] })); setNewProduit('') }}}
+                      style={{ height: 32, padding: '0 12px', background: newProduit.trim() ? '#0E2A6B' : '#e2e8f0', color: newProduit.trim() ? '#fff' : '#94a3b8', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: newProduit.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+                      +
+                    </button>
+                  </div>
+                </div>
+
                 {/* Sujets de mission */}
                 <div style={{ marginBottom: 14 }}>
                   <label style={labelStyle}>Sujets de mission <span style={{ color: '#E97433' }}>*</span></label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                    {[...SUJETS_MISSION, ...draft.sujets_mission.filter(s => !SUJETS_MISSION.includes(s))].map(s => {
-                      const active = draft.sujets_mission.includes(s)
-                      return (
-                        <button key={s} onClick={() => setDraft(p => ({ ...p, sujets_mission: active ? p.sujets_mission.filter(x => x !== s) : [...p.sujets_mission, s] }))}
-                          style={{ background: active ? '#0E2A6B' : '#f1f5f9', color: active ? '#fff' : '#475569', border: active ? '2px solid #0E2A6B' : '2px solid transparent', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                          {s}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <CollapsibleChips
+                    options={SUJETS_MISSION}
+                    selected={draft.sujets_mission}
+                    onToggle={s => setDraft(p => ({ ...p, sujets_mission: p.sujets_mission.includes(s) ? p.sujets_mission.filter(x => x !== s) : [...p.sujets_mission, s] }))}
+                  />
+                  {draft.sujets_mission.filter(s => !SUJETS_MISSION.includes(s)).map(s => (
+                    <button key={s} onClick={() => setDraft(p => ({ ...p, sujets_mission: p.sujets_mission.filter(x => x !== s) }))}
+                      style={{ marginTop: 4, background: '#0E2A6B', color: '#fff', border: '2px solid #0E2A6B', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {s} ✕
+                    </button>
+                  ))}
                   <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                     <input
                       value={newSujet}
@@ -1006,17 +1038,18 @@ export default function Bibliotheque() {
                 {/* Outils */}
                 <div style={{ marginBottom: 24 }}>
                   <label style={labelStyle}>Outils <span style={{ color: '#E97433' }}>*</span></label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                    {[...OUTILS, ...draft.outils.filter(o => !OUTILS.includes(o))].map(o => {
-                      const active = draft.outils.includes(o)
-                      return (
-                        <button key={o} onClick={() => setDraft(p => ({ ...p, outils: active ? p.outils.filter(x => x !== o) : [...p.outils, o] }))}
-                          style={{ background: active ? '#E97433' : '#f1f5f9', color: active ? '#fff' : '#475569', border: active ? '2px solid #E97433' : '2px solid transparent', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                          {o}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <CollapsibleChips
+                    options={OUTILS}
+                    selected={draft.outils}
+                    onToggle={o => setDraft(p => ({ ...p, outils: p.outils.includes(o) ? p.outils.filter(x => x !== o) : [...p.outils, o] }))}
+                    activeColor='#E97433'
+                  />
+                  {draft.outils.filter(o => !OUTILS.includes(o)).map(o => (
+                    <button key={o} onClick={() => setDraft(p => ({ ...p, outils: p.outils.filter(x => x !== o) }))}
+                      style={{ marginTop: 4, background: '#E97433', color: '#fff', border: '2px solid #E97433', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {o} ✕
+                    </button>
+                  ))}
                   <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                     <input
                       value={newOutil}

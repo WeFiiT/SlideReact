@@ -73,6 +73,7 @@ export default function Preview() {
   const [showPublished,   setShowPublished]   = useState(false)
   const [unvalidateToast, setUnvalidateToast] = useState(null)
   const [spStep,          setSpStep]          = useState(null)
+  const [validateTip,     setValidateTip]     = useState(false)
   const skipSharePoint  = useRef(false)
   const isRemovingRef   = useRef(false)
   const supabaseUpdated = useRef(false)
@@ -104,6 +105,14 @@ export default function Preview() {
         spToken = await getToken()
       } catch (e) {
         console.error('Token SharePoint:', e)
+        setValidated(false)
+        setSlide(prev => ({ ...prev, validated: false }))
+        setUnvalidateToast({ ok: false, msg: 'Connexion SharePoint impossible. La slide ne peut pas être validée.' })
+        setTimeout(() => setUnvalidateToast(null), 5000)
+        setConfirmValidate(false)
+        setSpStep(null)
+        setValidating(false)
+        return
       }
       setSpStep(null)
       if (skipSharePoint.current) return
@@ -113,20 +122,29 @@ export default function Preview() {
         supabaseUpdated.current = true
         try {
           setSpStep('uploading')
-          const result = await uploadSlideToSharePoint(slide, spToken)
-          if (!skipSharePoint.current && result?.webUrl) {
-            await supabase.from('slides').update({ sharepoint_url: result.webUrl }).eq('id', id)
-            setSlide(prev => ({ ...prev, sharepoint_url: result.webUrl }))
-            setPublishedUrl(result.webUrl)
+          const slideForExport = await resolveLogoUrl(slide)
+          const result = await uploadSlideToSharePoint(slideForExport, spToken)
+          if (!skipSharePoint.current) {
+            if (result?.webUrl) {
+              await supabase.from('slides').update({ sharepoint_url: result.webUrl }).eq('id', id)
+              setSlide(prev => ({ ...prev, sharepoint_url: result.webUrl }))
+              setPublishedUrl(result.webUrl)
+            }
+            setConfirmValidate(false)
+            setShowPublished(true)
           }
         } catch (e) {
           console.error('SharePoint upload:', e)
+          if (!skipSharePoint.current) {
+            await supabase.from('slides').update({ validated: false }).eq('id', id)
+            setValidated(false)
+            setSlide(prev => ({ ...prev, validated: false }))
+            setUnvalidateToast({ ok: false, msg: 'Échec publication SharePoint. La slide n\'a pas été validée.' })
+            setTimeout(() => setUnvalidateToast(null), 6000)
+            setConfirmValidate(false)
+          }
         }
         setSpStep(null)
-        if (!skipSharePoint.current) {
-          setConfirmValidate(false)
-          setShowPublished(true)
-        }
       } else {
         // Revert optimiste
         setValidated(false)
@@ -186,18 +204,18 @@ export default function Preview() {
     skipSharePoint.current = true
     setValidating(false)
     setConfirmValidate(false)
+    setSpStep(null)
     if (isRemovingRef.current) {
       setUnvalidateToast({ ok: true, msg: 'Slide repassée en Brouillon.' })
       setTimeout(() => setUnvalidateToast(null), 3000)
       return
     }
-    if (!supabaseUpdated.current) {
-      setValidated(true)
-      setSlide(prev => ({ ...prev, validated: true }))
-      supabase.from('slides').update({ validated: true }).eq('id', id)
+    // Validation annulée : on reverte
+    setValidated(false)
+    setSlide(prev => ({ ...prev, validated: false }))
+    if (supabaseUpdated.current) {
+      supabase.from('slides').update({ validated: false }).eq('id', id)
     }
-    setPublishedUrl(null)
-    setShowPublished(true)
   }
 
   useEffect(() => {
@@ -519,6 +537,16 @@ export default function Preview() {
     (!slide.owner_email && normalizeName(slide.prenom) === user.prenomNorm && normalizeName(slide.nom) === user.nomNorm)
   )
 
+  // Verrou de validation : 2/3 champs remplis par catégorie
+  const a2of3 = (arr) => (arr || []).filter(Boolean).length >= 2
+  const slideComplete = a2of3(slide.contexte) && a2of3(slide.perimetre) && a2of3(slide.enjeux) && a2of3(slide.impact)
+  const missing = [
+    !a2of3(slide.contexte) && 'Contexte',
+    !a2of3(slide.perimetre) && 'Périmètre',
+    !a2of3(slide.enjeux) && 'Enjeux clés',
+    !a2of3(slide.impact) && 'Notre impact',
+  ].filter(Boolean)
+
   if (fullscreen) {
     const fsScale = Math.min(window.innerWidth / 1280, window.innerHeight / 720)
     return (
@@ -645,12 +673,28 @@ export default function Preview() {
         </div>}
 
         {!textEditMode && isOwner && (
-          <button
-            onClick={() => setConfirmValidate(true)}
-            style={{ height: 34, padding: '0 12px', borderRadius: 8, background: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', color: validated ? '#92521A' : '#16a34a', border: validated ? '1px solid #fde9c5' : '1px solid #bbf7d0' }}
-          >
-            {validated ? 'Retirer la validation' : '✓ Valider'}
-          </button>
+          <div style={{ position: 'relative', display: 'inline-flex' }}
+            onMouseEnter={() => { if (!validated && !slideComplete) setValidateTip(true) }}
+            onMouseLeave={() => setValidateTip(false)}>
+            <button
+              onClick={() => { if (validated || slideComplete) setConfirmValidate(true) }}
+              style={{ height: 34, padding: '0 12px', borderRadius: 8, background: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: !validated && !slideComplete ? 'not-allowed' : 'pointer', color: validated ? '#92521A' : '#16a34a', border: validated ? '1px solid #fde9c5' : '1px solid #bbf7d0', opacity: !validated && !slideComplete ? 0.45 : 1 }}
+            >
+              {validated ? 'Retirer la validation' : '✓ Valider'}
+            </button>
+            {validateTip && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 220, background: '#1e293b', borderRadius: 10, padding: '12px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.22)', zIndex: 300, pointerEvents: 'none' }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#f97316', marginBottom: 6 }}>Slide incomplète</div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>2/3 champs min. par catégorie :</div>
+                {missing.map(m => (
+                  <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#f97316', flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: '#e2e8f0' }}>{m}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {!textEditMode && <div ref={exportMenuRef} style={{ position: 'relative' }}>
@@ -880,7 +924,7 @@ export default function Preview() {
               <button
                 onClick={validating ? handleSkipSharePoint : () => setConfirmValidate(false)}
                 style={{ flex: 1, background: '#f1f5f9', color: validating ? '#92521A' : '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {validating ? (isRemovingRef.current ? 'Retirer sans SharePoint' : 'Valider sans SharePoint') : 'Annuler'}
+                {validating && isRemovingRef.current ? 'Retirer sans SharePoint' : 'Annuler'}
               </button>
             </div>
           </div>
@@ -904,7 +948,7 @@ export default function Preview() {
               <strong>« {slideTitle} »</strong> est maintenant marquée <strong style={{ color: '#16a34a' }}>Ready</strong>.{' '}
               {publishedUrl
                 ? 'Le fichier est disponible sur SharePoint.'
-                : "Elle n'a pas encore été publiée sur SharePoint. Vous pourrez le faire en revalidant la slide."}
+                : 'Disponible sur SharePoint.'}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {publishedUrl && (

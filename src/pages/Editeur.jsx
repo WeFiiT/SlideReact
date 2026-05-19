@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, MANAGEMENT_OPTIONS, SUJETS_MISSION, OUTILS, normalizeName } from '../constants'
+import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, MANAGEMENT_OPTIONS, TYPE_PRODUIT, SUJETS_MISSION, OUTILS, normalizeName } from '../constants'
 import ClientSelector from '../components/ClientSelector'
+import CollapsibleChips from '../components/CollapsibleChips'
 import { getUser } from './Login'
 
 const TOPBAR_H = 56
@@ -29,6 +30,7 @@ const EMPTY = {
   discipline: '',
   niveau_discipline: '',
   management: '',
+  type_produit: [],
   sujets_mission: [],
   outils: [],
 }
@@ -51,6 +53,7 @@ export default function Editeur() {
   const [autoSaving, setAutoSaving]   = useState(false)
   const [lastAutoSaved, setLastAutoSaved] = useState(null)
   const [errors, setErrors]           = useState({})
+  const [newProduit, setNewProduit]   = useState('')
   const [newSujet, setNewSujet]       = useState('')
   const [newOutil, setNewOutil]       = useState('')
   const [slideOpen, setSlideOpen]     = useState(false)
@@ -80,6 +83,7 @@ export default function Editeur() {
           discipline:        data.discipline        || '',
           niveau_discipline: data.niveau_discipline || '',
           management:        data.management        || '',
+          type_produit:      Array.isArray(data.type_produit)    ? data.type_produit    : [],
           sujets_mission:    Array.isArray(data.sujets_mission) ? data.sujets_mission : [],
           outils:            Array.isArray(data.outils)         ? data.outils         : [],
         })
@@ -103,8 +107,9 @@ export default function Editeur() {
     discipline:        f.discipline || null,
     niveau_discipline: f.niveau_discipline || null,
     management:        f.management || null,
-    sujets_mission:    f.sujets_mission.length ? f.sujets_mission : null,
-    outils:            f.outils.length ? f.outils : null,
+    type_produit:      f.type_produit.filter(t => TYPE_PRODUIT.includes(t)).length ? f.type_produit.filter(t => TYPE_PRODUIT.includes(t)) : null,
+    sujets_mission:    f.sujets_mission.filter(s => SUJETS_MISSION.includes(s)).length ? f.sujets_mission.filter(s => SUJETS_MISSION.includes(s)) : null,
+    outils:            f.outils.filter(o => OUTILS.includes(o)).length ? f.outils.filter(o => OUTILS.includes(o)) : null,
   })
 
   const schedAutoSave = (updated) => {
@@ -491,26 +496,44 @@ export default function Editeur() {
                 </div>
               </div>
               <div style={{ marginTop: 14 }}>
-                <label style={labelStyle}>Sujets de mission</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                  {SUJETS_MISSION.map(s => {
-                    const active = form.sujets_mission.includes(s)
-                    return (
-                      <button key={s} type="button"
-                        onClick={() => set('sujets_mission', active ? form.sujets_mission.filter(x => x !== s) : [...form.sujets_mission, s])}
-                        style={{ background: active ? '#0E2A6B' : '#f1f5f9', color: active ? '#fff' : '#475569', border: `2px solid ${active ? '#0E2A6B' : 'transparent'}`, borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        {s}
-                      </button>
-                    )
-                  })}
-                  {form.sujets_mission.filter(s => !SUJETS_MISSION.includes(s)).map(s => (
-                    <button key={s} type="button"
-                      onClick={() => set('sujets_mission', form.sujets_mission.filter(x => x !== s))}
-                      style={{ background: '#E97433', color: '#fff', border: '2px solid #E97433', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {s} ✕
-                    </button>
-                  ))}
+                <label style={labelStyle}>Type de produit</label>
+                <CollapsibleChips
+                  options={TYPE_PRODUIT}
+                  selected={form.type_produit}
+                  onToggle={t => set('type_produit', form.type_produit.includes(t) ? form.type_produit.filter(x => x !== t) : [...form.type_produit, t])}
+                />
+                {form.type_produit.filter(t => !TYPE_PRODUIT.includes(t)).map(t => (
+                  <button key={t} type="button"
+                    onClick={() => set('type_produit', form.type_produit.filter(x => x !== t))}
+                    style={{ marginTop: 4, background: '#E97433', color: '#fff', border: '2px solid #E97433', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {t} ✕
+                  </button>
+                ))}
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input value={newProduit} onChange={e => setNewProduit(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && newProduit.trim()) { set('type_produit', [...form.type_produit, newProduit.trim()]); setNewProduit('') }}}
+                    placeholder="Ajouter un type personnalisé…"
+                    style={{ ...inputBase, flex: 1, height: 34, fontSize: 13 }} />
+                  <button type="button" onClick={() => { if (newProduit.trim()) { set('type_produit', [...form.type_produit, newProduit.trim()]); setNewProduit('') }}}
+                    style={{ background: '#0E2A6B', color: '#fff', border: 'none', borderRadius: 7, padding: '0 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', height: 34, whiteSpace: 'nowrap' }}>
+                    + Ajouter
+                  </button>
                 </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <label style={labelStyle}>Sujets de mission</label>
+                <CollapsibleChips
+                  options={SUJETS_MISSION}
+                  selected={form.sujets_mission}
+                  onToggle={s => set('sujets_mission', form.sujets_mission.includes(s) ? form.sujets_mission.filter(x => x !== s) : [...form.sujets_mission, s])}
+                />
+                {form.sujets_mission.filter(s => !SUJETS_MISSION.includes(s)).map(s => (
+                  <button key={s} type="button"
+                    onClick={() => set('sujets_mission', form.sujets_mission.filter(x => x !== s))}
+                    style={{ marginTop: 4, background: '#E97433', color: '#fff', border: '2px solid #E97433', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {s} ✕
+                  </button>
+                ))}
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   <input value={newSujet} onChange={e => setNewSujet(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && newSujet.trim()) { set('sujets_mission', [...form.sujets_mission, newSujet.trim()]); setNewSujet('') }}}
@@ -524,25 +547,18 @@ export default function Editeur() {
               </div>
               <div style={{ marginTop: 14 }}>
                 <label style={labelStyle}>Outils</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                  {OUTILS.map(o => {
-                    const active = form.outils.includes(o)
-                    return (
-                      <button key={o} type="button"
-                        onClick={() => set('outils', active ? form.outils.filter(x => x !== o) : [...form.outils, o])}
-                        style={{ background: active ? '#0E2A6B' : '#f1f5f9', color: active ? '#fff' : '#475569', border: `2px solid ${active ? '#0E2A6B' : 'transparent'}`, borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        {o}
-                      </button>
-                    )
-                  })}
-                  {form.outils.filter(o => !OUTILS.includes(o)).map(o => (
-                    <button key={o} type="button"
-                      onClick={() => set('outils', form.outils.filter(x => x !== o))}
-                      style={{ background: '#E97433', color: '#fff', border: '2px solid #E97433', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {o} ✕
-                    </button>
-                  ))}
-                </div>
+                <CollapsibleChips
+                  options={OUTILS}
+                  selected={form.outils}
+                  onToggle={o => set('outils', form.outils.includes(o) ? form.outils.filter(x => x !== o) : [...form.outils, o])}
+                />
+                {form.outils.filter(o => !OUTILS.includes(o)).map(o => (
+                  <button key={o} type="button"
+                    onClick={() => set('outils', form.outils.filter(x => x !== o))}
+                    style={{ marginTop: 4, background: '#E97433', color: '#fff', border: '2px solid #E97433', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {o} ✕
+                  </button>
+                ))}
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   <input value={newOutil} onChange={e => setNewOutil(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && newOutil.trim()) { set('outils', [...form.outils, newOutil.trim()]); setNewOutil('') }}}

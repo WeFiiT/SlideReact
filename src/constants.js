@@ -1,4 +1,4 @@
-export const TYPES = ['Conseil', 'Produit', 'Qualité', 'Coaching & Formation']
+export const TYPES = ['Conseil', 'Immersion', 'Coaching', 'Formation']
 
 export const MANAGEMENT_OPTIONS = ['Oui', 'Non']
 
@@ -16,23 +16,28 @@ export const SUJETS_MISSION = [
   'SEO', 'Monétisation', 'Moteur de recherche', 'Stack vidéo', 'Modèle d\'abonnement',
 ]
 
+export const TYPE_PRODUIT = [
+  'App', 'Web', 'B2B', 'B2C', 'B2E',
+  'AI Product', 'API / Backend', 'Backoffice', 'CRM', 'Autre',
+]
+
 export const OUTILS = [
   'Jira', 'Confluence', 'Notion', 'Jira Discovery', 'Miro', 'Figma',
   'ABTasty', 'Kameloon',
   'Google Analytics', 'Piano', 'Contentsquare', 'Google Search Console',
   'Semrush', 'Amplitude', 'Looker', 'Algolia',
-  'Postman', 'Claude', 'Gemini', 'Salesforce',
+  'Postman', 'Claude', 'Gemini', 'Salesforce', 'Teams',
 ]
 
 export const DISCIPLINES = [
-  'Product Management',
+  'Product',
+  'QA',
+  'PMM',
   'Product Ops',
   'Product Data',
-  'Product Marketing',
-  'Agile / Coaching',
 ]
 
-export const NIVEAUX = ['Junior', 'Confirmé', 'Senior', 'Lead']
+export const NIVEAUX = ['Associate', 'Confirmé', 'Senior', 'Leader', 'Global Leader']
 
 export const SEGMENTATIONS_WEFIIT = [
   'Hospitalité & Evénementiel',
@@ -44,10 +49,10 @@ export const SEGMENTATIONS_WEFIIT = [
 ]
 
 export const TYPE_COLORS = {
-  'Conseil':              '#2563eb',
-  'Produit':              '#7c3aed',
-  'Qualité':              '#16a34a',
-  'Coaching & Formation': '#f08a2a',
+  'Conseil':       '#2563eb',
+  'Immersion':     '#7c3aed',
+  'Coaching':      '#f08a2a',
+  'Formation':     '#16a34a',
 }
 
 /* Normalise un nom pour la comparaison : minuscules, sans espaces ni tirets */

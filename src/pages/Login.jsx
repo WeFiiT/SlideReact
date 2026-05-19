@@ -59,10 +59,10 @@ export default function Login() {
         </div>
 
         <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800, color: '#002882', fontFamily: "'Publica Play', Arial, sans-serif", textAlign: 'center' }}>
-          Bienvenue
+          Annuaire des missions
         </h1>
         <p style={{ margin: '0 0 28px', fontSize: 14, color: '#64748b', textAlign: 'center' }}>
-          Connecte-toi avec ton adresse WeFiiT pour accéder à tes slides.
+          Connecte-toi pour accéder à toutes les missions WeFiiT et exporter tes références.
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -91,7 +91,7 @@ export default function Login() {
             width: '100%', height: 44, background: '#f08a2a', color: '#fff', border: 'none',
             borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
           }}>
-            Accéder à la bibliothèque →
+            Accéder à l'annuaire →
           </button>
         </form>
       </div>
