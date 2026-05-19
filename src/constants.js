@@ -1,3 +1,5 @@
+export const SUPER_USERS = ['rodolphe.leblevenec@wefiit.com']
+
 export const TYPES = ['Conseil', 'Immersion', 'Coaching', 'Formation']
 
 export const MANAGEMENT_OPTIONS = ['Oui', 'Non']

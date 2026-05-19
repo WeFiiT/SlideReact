@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
-import { normalizeName } from '../constants'
+import { normalizeName, SUPER_USERS } from '../constants'
 import { getUser } from '../pages/Login'
 import { uploadSlideToSharePoint, deleteSlideFromSharePoint, getToken } from '../utils/sharepoint'
 import { resolveLogoUrl } from '../utils/resolveLogoUrl'
@@ -82,10 +82,11 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
   const [validateTip,     setValidateTip]     = useState(false)
   const exportMenuRef = useRef(null)
 
-  const isOwner = user && (
+  const isSuperUser = user && SUPER_USERS.includes(user.email)
+  const isOwner = isSuperUser || (user && (
     slide.owner_email === user.email ||
     (!slide.owner_email && normalizeName(slide.prenom) === user.prenomNorm && normalizeName(slide.nom) === user.nomNorm)
-  )
+  ))
 
   // Sync local validated state if the parent updates the slide prop
   useEffect(() => { setValidated(!!slide.validated) }, [slide.validated])
@@ -508,14 +509,16 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
                           Voir sur SharePoint
                         </a>
                       )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmDelete(true) }}
-                        style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#dc2626', fontWeight: 600, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                      >
-                        Supprimer
-                      </button>
+                      {isOwner && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmDelete(true) }}
+                          style={{ width: '100%', background: 'none', border: 'none', padding: '9px 14px', fontSize: 13, color: '#dc2626', fontWeight: 600, cursor: 'pointer', borderRadius: 7, textAlign: 'left', fontFamily: 'inherit' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        >
+                          Supprimer
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

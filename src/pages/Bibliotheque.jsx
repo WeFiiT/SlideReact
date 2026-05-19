@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { supabase } from '../supabaseClient'
 import SlideCard from '../components/SlideCard'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
-import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, MANAGEMENT_OPTIONS, TYPE_PRODUIT, SUJETS_MISSION, OUTILS, computeStatus, normalizeName } from '../constants'
+import { TYPES, TYPE_COLORS, DISCIPLINES, NIVEAUX, MANAGEMENT_OPTIONS, TYPE_PRODUIT, SUJETS_MISSION, OUTILS, computeStatus, normalizeName, SUPER_USERS } from '../constants'
 import ClientSelector from '../components/ClientSelector'
 import CollapsibleChips from '../components/CollapsibleChips'
 import { getUser, logout } from './Login'
@@ -70,11 +70,21 @@ export default function Bibliotheque() {
 
   const exitSelectMode = () => { setSelectMode(false); setSelectedIds([]) }
 
+  const isSuperUser = user && SUPER_USERS.includes(user.email)
+  const ownedSelectedIds = isSuperUser ? selectedIds : selectedIds.filter(id => {
+    const s = slides.find(sl => sl.id === id)
+    return s && (
+      s.owner_email === user?.email ||
+      (!s.owner_email && normalizeName(s.prenom) === user?.prenomNorm && normalizeName(s.nom) === user?.nomNorm)
+    )
+  })
+
   const handleBulkDelete = async () => {
+    if (!ownedSelectedIds.length) return
     setBulkDeleting(true)
-    const { error } = await supabase.from('slides').delete().in('id', selectedIds)
+    const { error } = await supabase.from('slides').delete().in('id', ownedSelectedIds)
     if (!error) {
-      setSlides(prev => prev.filter(s => !selectedIds.includes(s.id)))
+      setSlides(prev => prev.filter(s => !ownedSelectedIds.includes(s.id)))
       exitSelectMode()
       setConfirmBulkDel(false)
     } else {
@@ -808,11 +818,11 @@ export default function Bibliotheque() {
             )}
           </div>
           <button
-            onClick={() => selectedIds.length > 0 && !batchExporting && setConfirmBulkDel(true)}
-            disabled={selectedIds.length === 0 || batchExporting}
-            style={{ background: selectedIds.length > 0 && !batchExporting ? '#dc2626' : '#475569', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 13, fontWeight: 700, cursor: selectedIds.length > 0 && !batchExporting ? 'pointer' : 'default', opacity: selectedIds.length === 0 || batchExporting ? 0.5 : 1 }}
+            onClick={() => ownedSelectedIds.length > 0 && !batchExporting && setConfirmBulkDel(true)}
+            disabled={ownedSelectedIds.length === 0 || batchExporting}
+            style={{ background: ownedSelectedIds.length > 0 && !batchExporting ? '#dc2626' : '#475569', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 13, fontWeight: 700, cursor: ownedSelectedIds.length > 0 && !batchExporting ? 'pointer' : 'default', opacity: ownedSelectedIds.length === 0 || batchExporting ? 0.5 : 1 }}
           >
-            🗑️ Supprimer ({selectedIds.length})
+            🗑️ Supprimer ({ownedSelectedIds.length})
           </button>
         </div>
       )}
@@ -826,13 +836,18 @@ export default function Bibliotheque() {
           <div style={{ background: '#fff', borderRadius: 12, padding: '28px 28px 24px', width: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ fontSize: 20, marginBottom: 10 }}>🗑️</div>
             <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b', marginBottom: 6 }}>
-              Supprimer {selectedIds.length} référence{selectedIds.length > 1 ? 's' : ''} ?
+              Supprimer {ownedSelectedIds.length} référence{ownedSelectedIds.length > 1 ? 's' : ''} ?
             </div>
             <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24, lineHeight: 1.5 }}>
-              Cette action est irréversible. Les {selectedIds.length} références sélectionnées seront supprimées définitivement.
+              {ownedSelectedIds.length === 0
+                ? 'Aucune des références sélectionnées ne vous appartient.'
+                : ownedSelectedIds.length < selectedIds.length
+                  ? <>{ownedSelectedIds.length} sur {selectedIds.length} références sélectionnées vous appartiennent et seront supprimées définitivement. Les autres ne seront pas affectées.</>
+                  : <>Cette action est irréversible. Les {ownedSelectedIds.length} références seront supprimées définitivement.</>
+              }
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={handleBulkDelete} disabled={bulkDeleting}
+              <button onClick={handleBulkDelete} disabled={bulkDeleting || ownedSelectedIds.length === 0}
                 style={{ flex: 1, background: '#dc2626', color: '#fff', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 700, fontSize: 14, cursor: bulkDeleting ? 'default' : 'pointer', opacity: bulkDeleting ? 0.7 : 1 }}>
                 {bulkDeleting ? 'Suppression…' : 'Supprimer'}
               </button>
