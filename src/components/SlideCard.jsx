@@ -576,8 +576,8 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
               </button>
               <button
                 onClick={validating ? handleSkipSharePoint : () => setConfirmValidate(false)}
-                style={{ flex: 1, background: '#f1f5f9', color: validating ? '#92521A' : '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {validating && isRemovingRef.current ? 'Retirer sans SharePoint' : 'Annuler'}
+                style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 7, padding: '10px 0', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Annuler
               </button>
             </div>
           </div>

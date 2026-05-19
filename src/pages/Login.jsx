@@ -39,10 +39,9 @@ export function getUser() {
 export async function logout() {
   localStorage.removeItem('wf_user')
   try {
-    const msal     = await getMsal()
-    const accounts = msal.getAllAccounts()
-    if (accounts.length > 0) await msal.logoutPopup({ account: accounts[0] })
-  } catch { /* popup bloqué — session sessionStorage expire à la fermeture de l'onglet */ }
+    const msal = await getMsal()
+    await msal.clearCache()
+  } catch { /* ignore */ }
 }
 
 export default function Login() {
