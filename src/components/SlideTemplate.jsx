@@ -173,7 +173,21 @@ function Bullet({ text, placeholder, onSave, dotColor, textColor, bold = false, 
         placeholder={placeholder}
         onSave={onSave}
         multiline
-        style={{ fontSize, color: textColor ?? C.navyBright, lineHeight: 1.45, fontWeight: bold ? 700 : 400, fontFamily: FONT_BODY, wordSpacing: 'normal', letterSpacing: 'normal', display: 'block', flex: 1 }}
+        style={{
+          fontSize,
+          color: textColor ?? C.navyBright,
+          lineHeight: 1.45,
+          fontWeight: bold ? 700 : 400,
+          fontFamily: FONT_BODY,
+          wordSpacing: 'normal',
+          letterSpacing: 'normal',
+          display: 'block',
+          flex: 1,
+          minWidth: 0,
+          whiteSpace: 'normal',
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+        }}
       />
     </div>
   )

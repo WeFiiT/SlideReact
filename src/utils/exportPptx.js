@@ -176,13 +176,19 @@ function containLogo(imgW, imgH) {
 async function fetchLogo(url) {
   try {
     const res = await fetch(url)
+    console.log('[exportPptx] fetchLogo', url, '→', res.status, res.ok)
     if (!res.ok) return null
     const ct  = res.headers.get('content-type') || ''
     const ext = ct.includes('jpeg') || ct.includes('jpg') ? 'jpeg'
               : ct.includes('svg')                        ? 'svg'
               : 'png'
-    return { data: await res.arrayBuffer(), ext }
-  } catch { return null }
+    const data = await res.arrayBuffer()
+    console.log('[exportPptx] logo fetched, ext:', ext, 'size:', data.byteLength)
+    return { data, ext }
+  } catch (e) {
+    console.error('[exportPptx] fetchLogo error:', e)
+    return null
+  }
 }
 
 // Rels XML for cloned slides
@@ -232,6 +238,7 @@ export async function buildNativePptx(slides) {
     xml     = removeTitleCaps(xml)
     xml     = applyData(xml, data)
 
+    console.log('[exportPptx] slide', n, 'logo_url:', data.logo_url)
     if (data.logo_url) {
       const logo = await fetchLogo(data.logo_url)
       if (logo) {
