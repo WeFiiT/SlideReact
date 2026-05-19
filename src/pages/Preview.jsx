@@ -5,6 +5,7 @@ import { supabase } from '../supabaseClient'
 import SlideTemplate, { DEFAULT_LAYOUT } from '../components/SlideTemplate'
 import { getUser } from './Login'
 import { normalizeName } from '../constants'
+import { resolveLogoUrl } from '../utils/resolveLogoUrl'
 
 const TOPBAR_H = 56
 const RAIL_W   = 80
@@ -382,8 +383,10 @@ export default function Preview() {
     setExporting(true)
     try {
       const { buildNativePptx, buildPptxFilename } = await import('../utils/exportPptx')
-      const pptx = await buildNativePptx([slide])
+      const slideForExport = await resolveLogoUrl(slide)
+      const pptx = await buildNativePptx([slideForExport])
       await pptx.writeFile({ fileName: `${buildPptxFilename(slide)}.pptx` })
+      if (pptx.warnings.length > 0) alert('Logo non inclus dans le PPTX : lien du logo inaccessible.')
     } finally { setExporting(false) }
   }
 

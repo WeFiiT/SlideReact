@@ -1,4 +1,5 @@
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser'
+import { resolveLogoUrl } from './resolveLogoUrl'
 
 function buildPptxFilename(slide) {
   const date = slide.created_at
@@ -98,8 +99,10 @@ export async function deleteSlideFromSharePoint(slide, token = null) {
 // token optionnel : pré-acquis dans le contexte du clic pour éviter le blocage popup
 export async function uploadSlideToSharePoint(slide, token = null) {
   const { buildNativePptx } = await import('./exportPptx')
-  const pptx     = await buildNativePptx([slide])
-  const blob     = await pptx.getBlob()
+  const slideForExport = await resolveLogoUrl(slide)
+  const pptx = await buildNativePptx([slideForExport])
+  if (pptx.warnings.length > 0) console.warn('[sharepoint] logo not included:', pptx.warnings)
+  const blob = await pptx.getBlob()
   const filename = `${buildPptxFilename(slide)}.pptx`
   if (!token) token = await getToken()
 

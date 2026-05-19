@@ -5,6 +5,7 @@ import SlideTemplate, { DEFAULT_LAYOUT } from './SlideTemplate'
 import { normalizeName } from '../constants'
 import { getUser } from '../pages/Login'
 import { uploadSlideToSharePoint, deleteSlideFromSharePoint, getToken } from '../utils/sharepoint'
+import { resolveLogoUrl } from '../utils/resolveLogoUrl'
 
 const THUMB_W  = 140
 const THUMB_H  = Math.round(THUMB_W * 9 / 16)   // 79px
@@ -109,8 +110,13 @@ export default function SlideCard({ slide, onDeleted, onValidated, onFavorited, 
       setExporting(true)
       try {
         const { buildNativePptx, buildPptxFilename } = await import('../utils/exportPptx')
-        const pptx = await buildNativePptx([slide])
+        const slideForExport = await resolveLogoUrl(slide)
+        const pptx = await buildNativePptx([slideForExport])
         await pptx.writeFile({ fileName: `${buildPptxFilename(slide)}.pptx` })
+        if (pptx.warnings.length > 0) {
+          setUnvalidateToast({ ok: false, msg: 'Logo non inclus (lien inaccessible)' })
+          setTimeout(() => setUnvalidateToast(null), 5000)
+        }
       } finally { setExporting(false) }
     } else {
       navigate(`/preview/${slide.id}?export=${fmt}`)

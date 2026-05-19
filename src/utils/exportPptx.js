@@ -137,7 +137,6 @@ function insertLogoPic(slideXml, rId, x = LOGO.x, y = LOGO.y, cx = LOGO.cx, cy =
       '<p:spPr>',
         `<a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>`,
         '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>',
-        '<a:ln><a:noFill/></a:ln>',
       '</p:spPr>',
     '</p:pic>',
   ].join('')
@@ -176,17 +175,15 @@ function containLogo(imgW, imgH) {
 async function fetchLogo(url) {
   try {
     const res = await fetch(url)
-    console.log('[exportPptx] fetchLogo', url, '→', res.status, res.ok)
     if (!res.ok) return null
     const ct  = res.headers.get('content-type') || ''
     const ext = ct.includes('jpeg') || ct.includes('jpg') ? 'jpeg'
               : ct.includes('svg')                        ? 'svg'
               : 'png'
     const data = await res.arrayBuffer()
-    console.log('[exportPptx] logo fetched, ext:', ext, 'size:', data.byteLength)
     return { data, ext }
   } catch (e) {
-    console.error('[exportPptx] fetchLogo error:', e)
+    console.warn('[exportPptx] logo fetch failed:', e.message, url)
     return null
   }
 }
@@ -228,6 +225,8 @@ export async function buildNativePptx(slides) {
   const zip       = await JSZip.loadAsync(buf)
   const slide1Xml = await zip.files['ppt/slides/slide1.xml'].async('string')
 
+  const warnings = []
+
   for (let i = 0; i < slides.length; i++) {
     const n    = i + 1
     const data = slides[i]
@@ -238,14 +237,14 @@ export async function buildNativePptx(slides) {
     xml     = removeTitleCaps(xml)
     xml     = applyData(xml, data)
 
-    console.log('[exportPptx] slide', n, 'logo_url:', data.logo_url)
     if (data.logo_url) {
       const logo = await fetchLogo(data.logo_url)
       if (logo) {
         const mediaName = `logo_${n}.${logo.ext}`
         const logoRId   = 'rId3'
 
-        zip.file(`ppt/media/${mediaName}`, logo.data)
+        // Use Uint8Array for maximum JSZip compatibility
+        zip.file(`ppt/media/${mediaName}`, new Uint8Array(logo.data))
 
         // Aspect-ratio-correct logo placement (skip for SVG)
         let logoPos = { x: LOGO.x, y: LOGO.y, cx: LOGO.cx, cy: LOGO.cy }
@@ -264,8 +263,10 @@ export async function buildNativePptx(slides) {
         } else {
           zip.file(`ppt/slides/_rels/slide${n}.xml.rels`, makeSlideRels(logoRId, mediaName))
         }
-      } else if (n > 1) {
-        zip.file(`ppt/slides/_rels/slide${n}.xml.rels`, makeSlideRels())
+      } else {
+        warnings.push(`Slide ${n}: logo introuvable (URL: ${data.logo_url})`)
+        console.warn('[exportPptx] logo fetch failed for slide', n, data.logo_url)
+        if (n > 1) zip.file(`ppt/slides/_rels/slide${n}.xml.rels`, makeSlideRels())
       }
     } else if (n > 1) {
       zip.file(`ppt/slides/_rels/slide${n}.xml.rels`, makeSlideRels())
@@ -306,6 +307,7 @@ export async function buildNativePptx(slides) {
   })
 
   return {
+    warnings,
     getBlob:   generateBlob,
     writeFile: async ({ fileName }) => {
       const blob = await generateBlob()
@@ -313,7 +315,9 @@ export async function buildNativePptx(slides) {
       const a    = document.createElement('a')
       a.href     = url
       a.download = fileName
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
     },
   }
