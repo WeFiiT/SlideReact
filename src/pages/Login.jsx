@@ -60,7 +60,7 @@ export default function Login() {
     setError('')
     try {
       const msal   = await getMsal()
-      const result = await msal.loginPopup({ scopes: LOGIN_SCOPES })
+      const result = await msal.loginPopup({ scopes: LOGIN_SCOPES, redirectUri: window.location.origin + '/blank.html' })
 
       if (!result.account.username.toLowerCase().endsWith('@wefiit.com')) {
         setError('Utilise ton compte WeFiiT (@wefiit.com).')
