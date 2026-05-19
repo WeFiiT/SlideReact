@@ -376,17 +376,22 @@ export default function Preview() {
     Object.assign(wrapper.style, {
       position: 'fixed', top: '0', left: '-9999px',
       width: '1280px', height: '720px',
-      overflow: 'visible', zIndex: '-1', transform: 'none',
+      overflow: 'hidden', zIndex: '99999', transform: 'none',
+      pointerEvents: 'none',
     })
     wrapper.appendChild(slideRef.current.cloneNode(true))
     document.body.appendChild(wrapper)
-    const canvas = await html2canvas(wrapper, {
-      scale: 2, useCORS: true,
-      width: 1280, height: 720,
-      scrollX: 0, scrollY: 0,
-    })
-    document.body.removeChild(wrapper)
-    return canvas
+    try {
+      const canvas = await html2canvas(wrapper, {
+        scale: 2, useCORS: true, allowTaint: false,
+        width: 1280, height: 720,
+        scrollX: -window.scrollX, scrollY: -window.scrollY,
+        windowWidth: 1280, windowHeight: 720,
+      })
+      return canvas
+    } finally {
+      document.body.removeChild(wrapper)
+    }
   }
 
   const exportPNG = async () => {
@@ -399,7 +404,9 @@ export default function Preview() {
       const link = document.createElement('a')
       link.download = `${filename}.png`
       link.href = canvas.toDataURL('image/png')
+      document.body.appendChild(link)
       link.click()
+      document.body.removeChild(link)
     } finally { setExporting(false) }
   }
 

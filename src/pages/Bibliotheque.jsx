@@ -98,7 +98,8 @@ export default function Bibliotheque() {
     const container = document.createElement('div')
     Object.assign(container.style, {
       position: 'fixed', top: '0', left: '-9999px',
-      width: '1280px', height: '720px', overflow: 'hidden', zIndex: '-1',
+      width: '1280px', height: '720px', overflow: 'hidden', zIndex: '99999',
+      pointerEvents: 'none',
     })
     document.body.appendChild(container)
     const root = createRoot(container)
@@ -107,14 +108,20 @@ export default function Bibliotheque() {
         <SlideTemplate {...slide} editMode={false} textEditMode={false}
           layout={DEFAULT_LAYOUT} onLayoutChange={() => {}} onTextChange={() => {}} />
       )
-      setTimeout(resolve, 220)
+      setTimeout(resolve, 400)
     })
-    const canvas = await html2canvas(container, {
-      scale: 2, useCORS: true, width: 1280, height: 720, scrollX: 0, scrollY: 0,
-    })
-    root.unmount()
-    document.body.removeChild(container)
-    return canvas
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2, useCORS: true, allowTaint: false,
+        width: 1280, height: 720,
+        scrollX: -window.scrollX, scrollY: -window.scrollY,
+        windowWidth: 1280, windowHeight: 720,
+      })
+      return canvas
+    } finally {
+      root.unmount()
+      document.body.removeChild(container)
+    }
   }
 
   const handleBatchExport = async (format) => {
